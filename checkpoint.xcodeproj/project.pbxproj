@@ -36,9 +36,22 @@
 		E2B07FA7300B165800DED108 /* checkpointUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = checkpointUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E2B08041300BD67800DED108 /* Exceptions for "checkpoint" folder in "checkpoint" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E2B07F8D300B165600DED108 /* checkpoint */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E2B07F90300B165600DED108 /* checkpoint */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E2B08041300BD67800DED108 /* Exceptions for "checkpoint" folder in "checkpoint" target */,
+			);
 			path = checkpoint;
 			sourceTree = "<group>";
 		};
@@ -422,11 +435,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = checkpoint/checkpoint.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NSL86F37B9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = checkpoint/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "checkpoint uses the camera to stream live video during an emergency.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "checkpoint shares your location with your friends during an emergency.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "checkpoint uses the microphone to stream live audio during an emergency.";
@@ -458,11 +473,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = checkpoint/checkpoint.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NSL86F37B9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = checkpoint/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "checkpoint uses the camera to stream live video during an emergency.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "checkpoint shares your location with your friends during an emergency.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "checkpoint uses the microphone to stream live audio during an emergency.";

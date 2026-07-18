@@ -136,6 +136,18 @@ struct EmergencyView: View {
                 .frame(height: 52)
             }
 
+            if let analysis = sessionManager.activeSession?.analysis, analysis.present, !analysis.summary.isEmpty {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "sparkles").font(.caption)
+                    Text(analysis.summary)
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(8)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+            }
+
             if !sessionManager.notifications.isEmpty {
                 NotificationLogView(entries: sessionManager.notifications, maxHeight: 84)
             }

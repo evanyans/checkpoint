@@ -26,6 +26,7 @@ struct EmergencySession: Identifiable, Equatable {
     let etaMinutes: Int?
     let ownerId: String?
     let notifyIds: [String]
+    let analysis: SuspectAnalysis?
 
     init?(id: String, data: [String: Any]) {
         guard let channelName = data["channelName"] as? String,
@@ -39,6 +40,10 @@ struct EmergencySession: Identifiable, Equatable {
         self.etaMinutes = data["etaMinutes"] as? Int
         self.ownerId = data["ownerId"] as? String
         self.notifyIds = data["notifyIds"] as? [String] ?? []
+        self.analysis = SuspectAnalysis(
+            data: data["analysis"] as? [String: Any],
+            updatedAt: (data["analysisUpdatedAt"] as? Timestamp)?.dateValue()
+        )
     }
 
     var coordinate: CLLocationCoordinate2D? {

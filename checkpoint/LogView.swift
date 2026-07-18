@@ -136,6 +136,10 @@ struct LogDetailView: View {
                         )
                 }
 
+                if let analysis = entry.analysis {
+                    IncidentAnalysisView(analysis: analysis)
+                }
+
                 Text("Captured evidence (\(captures.count))")
                     .font(.headline)
 

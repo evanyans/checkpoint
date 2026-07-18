@@ -1,0 +1,166 @@
+[debug] [2026-07-18T15:37:54.255Z] ----------------------------------------------------------------------
+[debug] [2026-07-18T15:37:54.263Z] Command:       /usr/local/bin/firebase /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase deploy --only functions:analyzeSuspectFromCaptures
+[debug] [2026-07-18T15:37:54.263Z] CLI Version:   15.24.0
+[debug] [2026-07-18T15:37:54.264Z] Platform:      darwin
+[debug] [2026-07-18T15:37:54.264Z] Node Version:  v20.18.2
+[debug] [2026-07-18T15:37:54.264Z] Detected Agent: unknown
+[debug] [2026-07-18T15:37:54.265Z] Time:          Sat Jul 18 2026 11:37:54 GMT-0400 (Eastern Daylight Time)
+[debug] [2026-07-18T15:37:54.266Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-18T15:37:55.463Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-18T15:37:55.464Z] > authorizing via signed-in user (evanyans@gmail.com)
+[debug] [2026-07-18T15:37:55.465Z] [iam] checking project checkpoint-65b0d for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-07-18T15:37:55.467Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:55.468Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:55.469Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d:testIamPermissions [none]
+[debug] [2026-07-18T15:37:55.469Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d:testIamPermissions  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:55.469Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-07-18T15:37:55.863Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d:testIamPermissions 200
+[debug] [2026-07-18T15:37:55.864Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-07-18T15:37:55.866Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:55.866Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:55.868Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/checkpoint-65b0d/serviceAccounts/checkpoint-65b0d@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-07-18T15:37:55.868Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/checkpoint-65b0d/serviceAccounts/checkpoint-65b0d@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-07-18T15:37:56.278Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/checkpoint-65b0d/serviceAccounts/checkpoint-65b0d@appspot.gserviceaccount.com:testIamPermissions 404
+[debug] [2026-07-18T15:37:56.279Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/checkpoint-65b0d/serviceAccounts/checkpoint-65b0d@appspot.gserviceaccount.com:testIamPermissions {"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}}
+[debug] [2026-07-18T15:37:56.281Z] [functions] service account IAM check errored, deploy may fail: Request to https://iam.googleapis.com/v1/projects/checkpoint-65b0d/serviceAccounts/checkpoint-65b0d@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}},"response":{"statusCode":404}},"exit":1,"message":"Request to https://iam.googleapis.com/v1/projects/checkpoint-65b0d/serviceAccounts/checkpoint-65b0d@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account","status":404}
+[info] 
+[info] === Deploying to 'checkpoint-65b0d'...
+[info] 
+[info] i  deploying functions 
+[debug] [2026-07-18T15:37:56.286Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.287Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.287Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d [none]
+[debug] [2026-07-18T15:37:56.372Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d 200
+[debug] [2026-07-18T15:37:56.372Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/checkpoint-65b0d {"projectNumber":"761828808503","projectId":"checkpoint-65b0d","lifecycleState":"ACTIVE","name":"checkpoint","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-07-18T02:38:34.447Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[debug] [2026-07-18T15:37:56.376Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.376Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.377Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.377Z] Checked if tokens are valid: true, expires at: 1784392055069
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[debug] [2026-07-18T15:37:56.378Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.378Z] Checked if tokens are valid: true, expires at: 1784392055069
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-07-18T15:37:56.379Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.379Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.381Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com [none]
+[debug] [2026-07-18T15:37:56.381Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:56.385Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/runtimeconfig.googleapis.com [none]
+[debug] [2026-07-18T15:37:56.385Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/runtimeconfig.googleapis.com  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:56.390Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com [none]
+[debug] [2026-07-18T15:37:56.391Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:56.394Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com [none]
+[debug] [2026-07-18T15:37:56.394Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:56.587Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com 200
+[debug] [2026-07-18T15:37:56.587Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com [omitted]
+[warn] ⚠  functions: missing required API cloudbuild.googleapis.com. Enabling now... 
+[debug] [2026-07-18T15:37:56.590Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.590Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.591Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com:enable [none]
+[debug] [2026-07-18T15:37:56.591Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com:enable  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:56.659Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com 200
+[debug] [2026-07-18T15:37:56.659Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com [omitted]
+[warn] ⚠  functions: missing required API cloudfunctions.googleapis.com. Enabling now... 
+[debug] [2026-07-18T15:37:56.661Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.661Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.661Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com:enable [none]
+[debug] [2026-07-18T15:37:56.661Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com:enable  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:56.671Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/runtimeconfig.googleapis.com 200
+[debug] [2026-07-18T15:37:56.671Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/runtimeconfig.googleapis.com [omitted]
+[debug] [2026-07-18T15:37:56.683Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com 200
+[debug] [2026-07-18T15:37:56.683Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com [omitted]
+[warn] ⚠  artifactregistry: missing required API artifactregistry.googleapis.com. Enabling now... 
+[debug] [2026-07-18T15:37:56.683Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.683Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:37:56.683Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com:enable [none]
+[debug] [2026-07-18T15:37:56.684Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com:enable  x-goog-user-project=checkpoint-65b0d
+[debug] [2026-07-18T15:37:57.021Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com:enable 200
+[debug] [2026-07-18T15:37:57.021Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/artifactregistry.googleapis.com:enable [omitted]
+[debug] [2026-07-18T15:37:57.034Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com:enable 200
+[debug] [2026-07-18T15:37:57.034Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudbuild.googleapis.com:enable [omitted]
+[debug] [2026-07-18T15:37:57.090Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com:enable 200
+[debug] [2026-07-18T15:37:57.090Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/checkpoint-65b0d/services/cloudfunctions.googleapis.com:enable [omitted]
+[debug] [2026-07-18T15:38:07.105Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:38:07.111Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:38:07.113Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/checkpoint-65b0d/adminSdkConfig [none]
+[debug] [2026-07-18T15:38:07.532Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/checkpoint-65b0d/adminSdkConfig 200
+[debug] [2026-07-18T15:38:07.533Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/checkpoint-65b0d/adminSdkConfig {"projectId":"checkpoint-65b0d","storageBucket":"checkpoint-65b0d.firebasestorage.app"}
+[debug] [2026-07-18T15:38:07.534Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:38:07.534Z] Checked if tokens are valid: true, expires at: 1784392055069
+[debug] [2026-07-18T15:38:07.534Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/checkpoint-65b0d/configs [none]
+[debug] [2026-07-18T15:38:07.808Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/checkpoint-65b0d/configs 200
+[debug] [2026-07-18T15:38:07.809Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/checkpoint-65b0d/configs {}
+[debug] [2026-07-18T15:38:07.814Z] Validating nodejs source
+[warn] ⚠  functions: Runtime Node.js 20 was deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[warn] ⚠  functions: Couldn't find firebase-functions package in your source code. Have you run 'npm install'? 
+[debug] [2026-07-18T15:38:07.823Z] getFunctionsSDKVersion encountered error: Cannot find module 'firebase-functions'
+Require stack:
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/versioning.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/emulator/functionsEmulatorShared.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/frameworks/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/prepare.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/checkValidTargetFilters.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/deploy.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/cli.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase.js {"code":"MODULE_NOT_FOUND","requireStack":["/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/versioning.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/index.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/emulator/functionsEmulatorShared.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/frameworks/index.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/prepare.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/index.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/index.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/checkValidTargetFilters.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/deploy.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/index.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/index.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/cli.js","/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase.js"]}
+[debug] [2026-07-18T15:38:07.827Z] checkFunctionsSDKVersion encountered error: Invalid Version:  {}
+[debug] [2026-07-18T15:38:07.828Z] > [functions] package.json contents: {
+  "name": "checkpoint-functions",
+  "description": "Checkpoint auto-escalation agent — places an ElevenLabs conversational call when an emergency stays unresolved.",
+  "type": "commonjs",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "logs": "firebase functions:log",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "private": true
+}
+[debug] [2026-07-18T15:38:07.829Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-07-18T15:38:07.829Z] Could not parse firebase-functions version '' into semver.
+[debug] [2026-07-18T15:38:07.832Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-07-18T15:38:07.898Z] Error: Cannot find module 'firebase-functions'
+Require stack:
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/emulator/functionsEmulatorShared.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/frameworks/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/prepare.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/checkValidTargetFilters.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/deploy.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/index.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/cli.js
+- /Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1225:15)
+    at Function._resolveFilename (pkg/prelude/bootstrap.js:1959:46)
+    at Function.resolve (node:internal/modules/helpers:190:19)
+    at Delegate.findFunctionsBinary (/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:100:33)
+    at Delegate.spawnFunctionsProcess (/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:130:30)
+    at Delegate.serveAdmin (/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:151:35)
+    at Delegate.discoverBuild (/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:191:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async loadCodebases (/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js:488:33)
+    at async prepare (/Users/evanyan/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js:168:24)
+[error] 
+[error] Error: An unexpected error has occurred.
