@@ -3,7 +3,16 @@
     "allow": [
       "Bash(plutil *)",
       "WebFetch(domain:firebase.google.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(command -v gh)",
+      "Bash(gh --version)",
+      "Bash(command -v git)",
+      "Bash(git --version)",
+      "Bash(gh auth *)",
+      "Bash(git -C /Users/selenaxu/Documents/github/checkpoint remote -v)",
+      "Bash(git config *)",
+      "Bash(command -v brew)",
+      "Bash(brew --version)"
     ]
   }
 }
