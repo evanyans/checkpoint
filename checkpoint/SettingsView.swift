@@ -17,6 +17,9 @@ struct SettingsView: View {
     @State private var showMyQR = false
     @State private var showScanner = false
 
+    @AppStorage("autoCallNumber") private var autoCallNumber = ""
+    @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
+
     var body: some View {
         NavigationStack {
             Form {
@@ -113,6 +116,28 @@ struct SettingsView: View {
                     Text("Add a friend")
                 } footer: {
                     Text("Scan a friend's QR (or send a code). They accept the request, and you're both linked — no need to add each other separately.")
+                }
+
+                Section {
+                    HStack {
+                        Text("Auto-call number")
+                        Spacer()
+                        TextField("Phone number", text: $autoCallNumber)
+                            .keyboardType(.phonePad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    Stepper(value: $autoCallDelayMinutes, in: 1...60) {
+                        HStack {
+                            Text("After")
+                            Spacer()
+                            Text("\(autoCallDelayMinutes) min")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Automatic escalation call")
+                } footer: {
+                    Text("If an emergency stays active for \(autoCallDelayMinutes) minute\(autoCallDelayMinutes == 1 ? "" : "s"), an automated AI agent calls this number, tells them you may be in danger with your last known location, and can answer their questions. Leave blank to disable.")
                 }
 
                 Section("Your friends") {

@@ -59,10 +59,11 @@ final class SessionManager: ObservableObject {
     private var capturesListener: ListenerRegistration?
     private var notificationsListener: ListenerRegistration?
 
-    func createSession(channelName: String, ownerId: String, notifyIds: [String]) {
+    func createSession(channelName: String, ownerId: String, notifyIds: [String],
+                       escalationPhone: String? = nil, escalationDelayMinutes: Int? = nil) {
         let ref = db.collection("sessions").document()
         createdSessionId = ref.documentID
-        ref.setData([
+        var data: [String: Any] = [
             "channelName": channelName,
             "status": "triggered",
             "triggeredBy": DeviceIdentity.currentName,
@@ -70,7 +71,14 @@ final class SessionManager: ObservableObject {
             "notifyIds": notifyIds,
             "captureCount": 0,
             "createdAt": FieldValue.serverTimestamp(),
-        ])
+        ]
+        // If auto-escalation is configured, the backend agent reads these to place
+        // an automated phone call once the session has been live past the delay.
+        if let escalationPhone, !escalationPhone.isEmpty, let escalationDelayMinutes {
+            data["escalationPhone"] = escalationPhone
+            data["escalationDelayMinutes"] = escalationDelayMinutes
+        }
+        ref.setData(data)
     }
 
     func resolveSession(_ id: String) {

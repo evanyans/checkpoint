@@ -24,6 +24,9 @@ struct ContentView: View {
     @State private var role: EmergencyRole?
     @State private var cover: CoverKind?
 
+    @AppStorage("autoCallNumber") private var autoCallNumber = ""
+    @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
+
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -132,7 +135,9 @@ struct ContentView: View {
         sessionManager.createSession(
             channelName: AgoraConfig.channelName,
             ownerId: userManager.userId,
-            notifyIds: userManager.friendIds
+            notifyIds: userManager.friendIds,
+            escalationPhone: autoCallNumber,
+            escalationDelayMinutes: autoCallDelayMinutes
         )
         stream.join(asBroadcaster: true)
         locationManager.requestPermission()

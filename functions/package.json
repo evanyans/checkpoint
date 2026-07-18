@@ -1,0 +1,19 @@
+{
+  "name": "checkpoint-functions",
+  "description": "Checkpoint auto-escalation agent — places an ElevenLabs conversational call when an emergency stays unresolved.",
+  "type": "commonjs",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "logs": "firebase functions:log",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "private": true
+}
