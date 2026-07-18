@@ -14,7 +14,18 @@
       "Bash(echo \"npm: $\\(npm --version 2>/dev/null || echo MISSING\\)\")",
       "Bash(firebase --version)",
       "Bash(echo \"firebase-tools: $\\(firebase --version 2>/dev/null || echo MISSING\\)\")",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(plutil *)",
+      "WebFetch(domain:firebase.google.com)",
+      "Bash(command -v gh)",
+      "Bash(gh --version)",
+      "Bash(command -v git)",
+      "Bash(git --version)",
+      "Bash(gh auth *)",
+      "Bash(git -C /Users/selenaxu/Documents/github/checkpoint remote -v)",
+      "Bash(git config *)",
+      "Bash(command -v brew)",
+      "Bash(brew --version)"
     ]
   }
 }

@@ -21,6 +21,7 @@ struct SettingsView: View {
 
     @AppStorage("autoCallNumber") private var autoCallNumber = ""
     @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
+    @AppStorage(DiscreetMode.storageKey) private var discreetModeRaw = DiscreetMode.lockScreen.rawValue
 
     var body: some View {
         NavigationStack {
@@ -82,6 +83,30 @@ struct SettingsView: View {
                     Text("Add a friend")
                 } footer: {
                     Text("Scan a friend's QR (or enter their code) once — you're both linked instantly, so they don't need to add you back.")
+                }
+
+                Section {
+                    ForEach(DiscreetMode.allCases) { mode in
+                        Button {
+                            discreetModeRaw = mode.rawValue
+                        } label: {
+                            HStack {
+                                Text(mode.displayName)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if discreetModeRaw == mode.rawValue {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Discreet mode")
+                } footer: {
+                    Text("What your screen shows when you tap Hide Screen during an emergency. Triple-tap anywhere to return to the livestream.")
                 }
 
                 Section {
