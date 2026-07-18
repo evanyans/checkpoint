@@ -96,14 +96,10 @@ struct ContentView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "shield.fill")
-                .font(.system(size: 88))
-                .foregroundStyle(Color.accentColor)
-
             VStack(spacing: 8) {
-                Text("Emergency")
+                Text("Checkpoint")
                     .font(.largeTitle.bold())
-                Text("Start a livestream and alert your friends with your live location.")
+                Text("Start livestream and alert your friends.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -114,6 +110,8 @@ struct ContentView: View {
             HoldToTriggerButton(title: "Trigger Emergency (Hold)") {
                 triggerEmergency()
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 60)
         }
         .padding()
         .squarishButtons()
@@ -244,7 +242,7 @@ private struct HoldToTriggerButton: View {
             }
             .clipShape(Capsule())
         }
-        .frame(minHeight: 50)
+        .frame(minHeight: 44)
         .contentShape(Capsule())
         .gesture(
             DragGesture(minimumDistance: 0)
