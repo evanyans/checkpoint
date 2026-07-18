@@ -69,6 +69,7 @@ final class UserManager: ObservableObject {
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
+    private var tokenObserver: NSObjectProtocol?
     private var photoCache: [String: UIImage] = [:]
 
     init() {
@@ -80,6 +81,10 @@ final class UserManager: ObservableObject {
             userId = new
         }
         myCode = Self.code(from: userId)
+    }
+
+    deinit {
+        if let tokenObserver { NotificationCenter.default.removeObserver(tokenObserver) }
     }
 
     /// A 6-char uppercase code derived from the UUID, shown to friends.
@@ -97,6 +102,21 @@ final class UserManager: ObservableObject {
             "code": myCode,
             "updatedAt": FieldValue.serverTimestamp(),
         ], merge: true)
+
+        // Persist FCM push token so the Cloud Function can notify this user's
+        // friends when they trigger an emergency. Save whatever is cached now,
+        // and update whenever APNs hands us a fresh token.
+        if let token = AppDelegate.currentToken {
+            savePushToken(token)
+        }
+        tokenObserver = NotificationCenter.default.addObserver(
+            forName: AppDelegate.fcmTokenDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let token = note.object as? String else { return }
+            self?.savePushToken(token)
+        }
 
         listener = ref.addSnapshotListener { [weak self] snapshot, _ in
             let data = snapshot?.data()
@@ -157,6 +177,10 @@ final class UserManager: ObservableObject {
 
     func updateName(_ name: String) {
         db.collection("users").document(userId).setData(["name": name], merge: true)
+    }
+
+    private func savePushToken(_ token: String) {
+        db.collection("users").document(userId).setData(["fcmToken": token], merge: true)
     }
 
     func updateProfile(_ profile: UserProfile) {

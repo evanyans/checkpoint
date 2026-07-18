@@ -10,9 +10,8 @@ import FirebaseCore
 
 @main
 struct checkpointApp: App {
-    init() {
-        FirebaseApp.configure()
-    }
+    // AppDelegate configures Firebase and registers for push notifications.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {

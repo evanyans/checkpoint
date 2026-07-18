@@ -16,6 +16,7 @@ const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
 
 initializeApp();
 const db = getFirestore();
@@ -60,6 +61,59 @@ exports.escalateOverdueSessions = onSchedule(
     }
   }
 );
+
+//
+//  Emergency fan-out: when a new session is written, push a notification to
+//  every friend in notifyIds so their phone rings even if the app is closed.
+//
+exports.notifyFriendsOnEmergency = onDocumentCreated("sessions/{sessionId}", async (event) => {
+  const session = event.data?.data();
+  if (!session) return;
+
+  const notifyIds = Array.isArray(session.notifyIds) ? session.notifyIds : [];
+  if (notifyIds.length === 0) return;
+
+  const name = session.triggeredBy || "A friend";
+
+  // Firestore's `in` query caps at 30 ids; chunk to stay within the limit.
+  const tokens = [];
+  for (let i = 0; i < notifyIds.length; i += 30) {
+    const chunk = notifyIds.slice(i, i + 30);
+    const snap = await db.collection("users").where("__name__", "in", chunk).get();
+    snap.forEach((doc) => {
+      const token = doc.get("fcmToken");
+      if (typeof token === "string" && token.length > 0) tokens.push(token);
+    });
+  }
+
+  if (tokens.length === 0) {
+    logger.info("Emergency created but no friend tokens to notify", {
+      sessionId: event.params.sessionId,
+    });
+    return;
+  }
+
+  const body = `${name} has triggered an emergency.`;
+  const res = await getMessaging().sendEachForMulticast({
+    tokens,
+    notification: { title: "Emergency Alert", body },
+    apns: {
+      payload: {
+        aps: { sound: "default", "content-available": 1 },
+      },
+    },
+    data: {
+      sessionId: event.params.sessionId,
+      triggeredBy: name,
+    },
+  });
+
+  logger.info("Emergency push fan-out", {
+    sessionId: event.params.sessionId,
+    sent: res.successCount,
+    failed: res.failureCount,
+  });
+});
 
 async function placeCall(sessionId, s) {
   const ref = db.collection("sessions").doc(sessionId);

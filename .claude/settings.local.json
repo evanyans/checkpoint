@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(plutil *)",
+      "WebFetch(domain:firebase.google.com)",
+      "WebSearch"
+    ]
+  }
+}
