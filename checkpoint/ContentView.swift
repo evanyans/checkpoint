@@ -115,10 +115,12 @@ struct ContentView: View {
 
             Spacer()
 
-            HoldToTriggerButton(title: "Trigger Emergency (Hold)") {
+            HoldToTriggerButton(
+                title: "Trigger Emergency",
+                subtitle: "(hold for 3 seconds)"
+            ) {
                 triggerEmergency()
             }
-            .padding(.horizontal, 20)
             .padding(.bottom, 60)
         }
         .padding()
@@ -235,38 +237,44 @@ struct ContentView: View {
     }
 }
 
-/// A capsule-shaped action button that only fires after a sustained hold.
+/// A circular action button that only fires after a sustained hold.
 /// A darker fill sweeps left-to-right during the hold so the user sees how
 /// close they are to triggering; releasing early cancels cleanly.
 private struct HoldToTriggerButton: View {
     let title: String
+    let subtitle: String
     let onTrigger: () -> Void
 
     private let holdDuration: TimeInterval = 3
+    private let size: CGFloat = 200
 
     @State private var progress: CGFloat = 0
     @State private var isPressing = false
     @State private var pendingTrigger: DispatchWorkItem?
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.accentColor)
+        ZStack(alignment: .leading) {
+            Circle().fill(Color.accentColor)
 
-                Rectangle()
-                    .fill(Color.accentColor)
-                    .brightness(-0.15)
-                    .frame(width: geo.size.width * progress)
+            Rectangle()
+                .fill(Color.accentColor)
+                .brightness(-0.15)
+                .frame(width: size * progress, height: size)
 
+            VStack(spacing: 4) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text(subtitle)
+                    .font(.caption)
+                    .opacity(0.85)
             }
-            .clipShape(Capsule())
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .frame(width: size, height: size)
         }
-        .frame(minHeight: 44)
-        .contentShape(Capsule())
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .contentShape(Circle())
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
