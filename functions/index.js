@@ -29,7 +29,9 @@ const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
 const OUTBOUND_CALL_URL = "https://api.elevenlabs.io/v1/convai/twilio/outbound-call";
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+// Alias that auto-tracks the current Flash release, so this won't 404 when a
+// specific version is retired. Pin to e.g. "gemini-3.5-flash" if you need stability.
+const GEMINI_MODEL = "gemini-flash-latest";
 // Don't re-run Gemini on every rapid auto-capture; refresh at most this often.
 const ANALYSIS_THROTTLE_MS = 15000;
 
@@ -273,15 +275,18 @@ exports.analyzeSuspectFromCaptures = onDocumentCreated(
 
       const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) {
-        logger.warn("Gemini returned no text", { sessionId });
+        // Often means the response was blocked — surface the reason to the logs.
+        logger.warn("Gemini returned no text", {
+          sessionId,
+          finishReason: json.candidates?.[0]?.finishReason,
+          promptFeedback: json.promptFeedback,
+        });
         return;
       }
 
-      let parsed;
-      try {
-        parsed = JSON.parse(text);
-      } catch (e) {
-        logger.error("Gemini JSON parse failed", { sessionId, text: text.slice(0, 500) });
+      const parsed = parseGeminiJson(text);
+      if (!parsed) {
+        logger.error("Gemini JSON parse failed", { sessionId, text: text.slice(0, 800) });
         return;
       }
 
@@ -295,3 +300,23 @@ exports.analyzeSuspectFromCaptures = onDocumentCreated(
     }
   }
 );
+
+// Gemini sometimes wraps JSON in ```json fences or adds stray prose even when
+// asked for raw JSON. Strip fences, then fall back to the first {...} block.
+function parseGeminiJson(text) {
+  const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+}

@@ -16,6 +16,8 @@ struct SettingsView: View {
     @State private var addSuccess: String?
     @State private var showMyQR = false
     @State private var showScanner = false
+    @State private var showForceEndConfirm = false
+    @State private var forceEndResult: String?
 
     @AppStorage("autoCallNumber") private var autoCallNumber = ""
     @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
@@ -44,42 +46,6 @@ struct SettingsView: View {
                     }
                 }
 
-                if !userManager.incomingRequests.isEmpty {
-                    Section {
-                        ForEach(userManager.incomingRequests) { request in
-                            HStack(spacing: 12) {
-                                AvatarView(image: nil, name: request.name, size: 40)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(request.name).font(.subheadline.bold())
-                                    Text("wants to be your safety contact")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button {
-                                    userManager.acceptFriendRequest(request)
-                                } label: {
-                                    Text("Accept").font(.caption.bold())
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .buttonBorderShape(.capsule)
-                                Button {
-                                    userManager.declineFriendRequest(request)
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    } header: {
-                        Text("Friend requests")
-                    } footer: {
-                        Text("Accepting links you both — you'll each be alerted when the other triggers an emergency.")
-                    }
-                }
-
                 Section {
                     Button {
                         showScanner = true
@@ -96,11 +62,11 @@ struct SettingsView: View {
                         TextField("Or enter a friend code", text: $newFriendCode)
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
-                        Button("Send") {
-                            userManager.sendFriendRequest(byCode: newFriendCode) { error in
+                        Button("Add") {
+                            userManager.addFriend(byCode: newFriendCode) { error in
                                 addError = error
                                 if error == nil {
-                                    addSuccess = "Request sent."
+                                    addSuccess = "Friend added."
                                     newFriendCode = ""
                                 }
                             }
@@ -115,7 +81,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Add a friend")
                 } footer: {
-                    Text("Scan a friend's QR (or send a code). They accept the request, and you're both linked — no need to add each other separately.")
+                    Text("Scan a friend's QR (or enter their code) once — you're both linked instantly, so they don't need to add you back.")
                 }
 
                 Section {
@@ -168,6 +134,21 @@ struct SettingsView: View {
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                     }
                 }
+
+                Section {
+                    Button(role: .destructive) {
+                        showForceEndConfirm = true
+                    } label: {
+                        Label("Force-end all live sessions", systemImage: "bolt.slash.fill")
+                    }
+                    if let forceEndResult {
+                        Text(forceEndResult).font(.caption).foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Developer")
+                } footer: {
+                    Text("Resolves every session still marked live, across all devices. Use to clear stuck/zombie sessions that keep re-opening the app.")
+                }
             }
             .navigationTitle("Settings")
             .sheet(isPresented: $showMyQR) {
@@ -175,6 +156,18 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showScanner) {
                 ScanFriendView(userManager: userManager)
+            }
+            .confirmationDialog("Force-end all live sessions?",
+                                isPresented: $showForceEndConfirm, titleVisibility: .visible) {
+                Button("End all sessions", role: .destructive) {
+                    forceEndResult = "Ending…"
+                    SessionManager.forceEndAllSessions { count in
+                        forceEndResult = count == 0 ? "No live sessions found." : "Ended \(count) session\(count == 1 ? "" : "s")."
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This resolves every currently-live session for everyone, not just you.")
             }
         }
     }

@@ -87,7 +87,7 @@ struct IncidentAnalysisView: View {
                     .font(.subheadline.bold())
                 Spacer()
                 if let confidence = analysis.confidence {
-                    Text(confidence.capitalized)
+                    Text("\(confidence.capitalized) confidence")
                         .font(.caption2.bold())
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8)

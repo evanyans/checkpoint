@@ -26,7 +26,12 @@ struct EmergencySession: Identifiable, Equatable {
     let etaMinutes: Int?
     let ownerId: String?
     let notifyIds: [String]
+    let createdAt: Date?
     let analysis: SuspectAnalysis?
+
+    /// An emergency older than this is treated as stale — we won't auto-pop its
+    /// alert on launch, so leftover/unresolved sessions don't nag every reboot.
+    static let recentWindow: TimeInterval = 15 * 60
 
     init?(id: String, data: [String: Any]) {
         guard let channelName = data["channelName"] as? String,
@@ -40,6 +45,7 @@ struct EmergencySession: Identifiable, Equatable {
         self.etaMinutes = data["etaMinutes"] as? Int
         self.ownerId = data["ownerId"] as? String
         self.notifyIds = data["notifyIds"] as? [String] ?? []
+        self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
         self.analysis = SuspectAnalysis(
             data: data["analysis"] as? [String: Any],
             updatedAt: (data["analysisUpdatedAt"] as? Timestamp)?.dateValue()
@@ -50,12 +56,21 @@ struct EmergencySession: Identifiable, Equatable {
         guard let latitude, let longitude else { return nil }
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
+
+    /// A brand-new session (server timestamp still resolving) counts as recent.
+    var isRecent: Bool {
+        guard let createdAt else { return true }
+        return Date().timeIntervalSince(createdAt) < Self.recentWindow
+    }
 }
 
 final class SessionManager: ObservableObject {
     @Published var activeSession: EmergencySession?
     @Published var captures: [CaptureItem] = []
     @Published var notifications: [NotificationLogEntry] = []
+    /// Flips true when the specific session a viewer is watching gets resolved or
+    /// deleted, so the viewer's screen can close instead of hanging on "Connecting…".
+    @Published var viewedSessionEnded = false
 
     private(set) var createdSessionId: String?
 
@@ -63,6 +78,7 @@ final class SessionManager: ObservableObject {
     private var listener: ListenerRegistration?
     private var capturesListener: ListenerRegistration?
     private var notificationsListener: ListenerRegistration?
+    private var viewedSessionListener: ListenerRegistration?
 
     func createSession(channelName: String, ownerId: String, notifyIds: [String],
                        escalationPhone: String? = nil, escalationDelayMinutes: Int? = nil) {
@@ -141,6 +157,50 @@ final class SessionManager: ObservableObject {
         notificationsListener?.remove()
         notificationsListener = nil
         notifications = []
+    }
+
+    /// Watches one specific session document so a viewer closes the instant the
+    /// broadcaster ends it (status leaves "triggered") or it's deleted — regardless
+    /// of any other lingering sessions the global listener might otherwise latch onto.
+    func watchViewedSession(sessionId: String) {
+        viewedSessionListener?.remove()
+        viewedSessionEnded = false
+        viewedSessionListener = db.collection("sessions").document(sessionId)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                guard let self, let snapshot else { return }
+                let ended = !snapshot.exists ||
+                    (snapshot.data()?["status"] as? String) != "triggered"
+                if ended {
+                    DispatchQueue.main.async { self.viewedSessionEnded = true }
+                }
+            }
+    }
+
+    func stopWatchingViewedSession() {
+        viewedSessionListener?.remove()
+        viewedSessionListener = nil
+        viewedSessionEnded = false
+    }
+
+    /// Dev tool: force-resolve every session still marked "triggered". Clears zombie
+    /// sessions that would otherwise resurface and bug the app. Reports how many were
+    /// ended. Static so callers (e.g. Settings) don't need a live SessionManager.
+    static func forceEndAllSessions(completion: @escaping (Int) -> Void) {
+        let db = Firestore.firestore()
+        db.collection("sessions").whereField("status", isEqualTo: "triggered").getDocuments { snapshot, _ in
+            let docs = snapshot?.documents ?? []
+            guard !docs.isEmpty else {
+                DispatchQueue.main.async { completion(0) }
+                return
+            }
+            let batch = db.batch()
+            for doc in docs {
+                batch.updateData(["status": "resolved"], forDocument: doc.reference)
+            }
+            batch.commit { _ in
+                DispatchQueue.main.async { completion(docs.count) }
+            }
+        }
     }
 
     func addCapture(sessionId: String, jpeg: Data) {

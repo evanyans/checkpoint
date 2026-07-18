@@ -17,14 +17,24 @@ final class AgoraStreamManager: NSObject, ObservableObject {
     /// Called on the main thread with JPEG data when a manual snapshot succeeds.
     var onSnapshot: ((Data) -> Void)?
 
-    private(set) lazy var agoraEngine: AgoraRtcEngineKit = {
+    /// Created once, eagerly, at launch. Eager (not lazy) so that building the
+    /// SDK never happens on a button tap, and so main-thread video views and a
+    /// background-thread `join` can never race to lazily initialize it.
+    private(set) var agoraEngine: AgoraRtcEngineKit!
+
+    override init() {
+        super.init()
         let config = AgoraRtcEngineConfig()
         config.appId = AgoraConfig.appID
         config.channelProfile = .liveBroadcasting
-        return AgoraRtcEngineKit.sharedEngine(with: config, delegate: self)
-    }()
+        agoraEngine = AgoraRtcEngineKit.sharedEngine(with: config, delegate: self)
+    }
 
+    /// Safe to call from a background thread — Agora's engine methods are
+    /// internally synchronized. Keep it off main so it never blocks the UI.
     func join(asBroadcaster: Bool) {
+        DispatchQueue.main.async { self.statusText = "Connecting…" }
+
         _ = agoraEngine.enableVideo()
         agoraEngine.setClientRole(asBroadcaster ? .broadcaster : .audience)
 
@@ -48,7 +58,7 @@ final class AgoraStreamManager: NSObject, ObservableObject {
         }
 
         if result != 0 {
-            statusText = "Join failed, error code \(result)"
+            DispatchQueue.main.async { self.statusText = "Join failed, error code \(result)" }
         }
     }
 

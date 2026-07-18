@@ -28,7 +28,7 @@ free Gemini API key.
 2. **Create API key** (a Google account is all you need — no billing).
 3. Copy the key.
 
-The free tier covers `gemini-2.5-flash` with generous daily limits — fine for a demo.
+The free tier covers the Flash models with generous daily limits — fine for a demo.
 
 ## 2. Store it as a Firebase secret
 
@@ -69,8 +69,9 @@ The function logs the Gemini HTTP status and any parse failures.
 
 ### Notes & tuning
 
-- **Model**: `gemini-2.5-flash` (see `GEMINI_MODEL` in `index.js`). If your key has
-  `gemini-3-flash`, bump the constant for better quality.
+- **Model**: `gemini-flash-latest` (see `GEMINI_MODEL` in `index.js`) — an alias that
+  auto-tracks the current Flash release so it won't 404 when a version retires. Pin to a
+  specific version like `gemini-3.5-flash` if you need stable behavior.
 - **Throttle**: `ANALYSIS_THROTTLE_MS` (default 15s) caps how often Gemini is called as new
   stills stream in. Lower it for a snappier demo, raise it to save quota.
 - **What it analyzes**: the most recent 4 stills together, for a composite description.

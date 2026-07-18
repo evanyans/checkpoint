@@ -60,7 +60,6 @@ struct UserProfile: Equatable {
 
 final class UserManager: ObservableObject {
     @Published var friends: [Friend] = []
-    @Published var incomingRequests: [Friend] = []
     @Published var myProfile = UserProfile()
     @Published var myPhoto: UIImage?
     @Published private(set) var myCode: String = ""
@@ -126,21 +125,10 @@ final class UserManager: ObservableObject {
                       let name = dict["name"] as? String else { return nil }
                 return Friend(id: id, name: name)
             }
-            // Pending incoming requests: people who added me and are waiting for
-            // me to accept before the two-way safety link becomes active.
-            let rawRequests = data?["friendRequests"] as? [[String: Any]] ?? []
-            let friendIds = Set(friends.map(\.id))
-            let requests = rawRequests.compactMap { dict -> Friend? in
-                guard let id = dict["id"] as? String,
-                      let name = dict["name"] as? String,
-                      !friendIds.contains(id) else { return nil }
-                return Friend(id: id, name: name)
-            }
             let profile = UserProfile(map: data?["profile"] as? [String: Any] ?? [:])
             let photo = Self.decodePhoto(data?["photo"] as? String)
             DispatchQueue.main.async {
                 self?.friends = friends
-                self?.incomingRequests = requests
                 self?.myProfile = profile
                 if let photo {
                     self?.myPhoto = photo
@@ -199,10 +187,9 @@ final class UserManager: ObservableObject {
         }
     }
 
-    /// Sends a friend request to a user found by their 6-char code. The request
-    /// lands in their inbox; the link only activates once they accept.
-    /// `completion` is called with an error string, or nil on success.
-    func sendFriendRequest(byCode code: String, completion: @escaping (String?) -> Void) {
+    /// Adds a friend found by their 6-char code. Instantly mutual — see
+    /// `addFriend(toUserId:name:)`. `completion` gets an error string, or nil on success.
+    func addFriend(byCode code: String, completion: @escaping (String?) -> Void) {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !trimmed.isEmpty else { completion("Enter a code."); return }
         guard trimmed != myCode else { completion("That's your own code."); return }
@@ -213,48 +200,36 @@ final class UserManager: ObservableObject {
                 completion("No one found with that code.")
                 return
             }
-            self.sendFriendRequest(toUserId: doc.documentID,
-                                   name: doc.data()["name"] as? String ?? "Friend",
-                                   completion: completion)
+            self.addFriend(toUserId: doc.documentID,
+                           name: doc.data()["name"] as? String ?? "Friend",
+                           completion: completion)
         }
     }
 
-    /// Sends a friend request straight to a userId (e.g. from a scanned QR code).
-    func sendFriendRequest(toUserId id: String, name: String, completion: @escaping (String?) -> Void) {
+    /// Adds a friend by userId (e.g. from a scanned QR code) and forms the link in
+    /// BOTH directions at once, so the other person never has to add you back:
+    /// they go in my friends list, and I go in theirs. Both are then alerted when
+    /// either triggers an emergency.
+    func addFriend(toUserId id: String, name: String, completion: @escaping (String?) -> Void) {
         let targetId = id.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !targetId.isEmpty else { completion("Invalid code."); return }
         guard targetId != userId else { completion("That's your own code."); return }
         guard !friendIds.contains(targetId) else { completion("You're already friends with \(name)."); return }
 
+        let them: [String: Any] = ["id": targetId, "name": name]
         let me: [String: Any] = ["id": userId, "name": DeviceIdentity.currentName]
-        // Writes into the target's inbox; they see it and accept on their device.
+
+        // My own doc — always writable.
+        db.collection("users").document(userId).setData([
+            "friends": FieldValue.arrayUnion([them])
+        ], merge: true)
+
+        // Their doc — the other half of the link, so they don't have to add me.
         db.collection("users").document(targetId).setData([
-            "friendRequests": FieldValue.arrayUnion([me])
-        ], merge: true) { error in
-            completion(error == nil ? nil : "Couldn't send request. Try again.")
-        }
-    }
-
-    /// Accepts an incoming request, forming the mutual link: adds them to my
-    /// friends, adds me to theirs, and clears the pending request.
-    func acceptFriendRequest(_ friend: Friend) {
-        let them: [String: Any] = ["id": friend.id, "name": friend.name]
-        let me: [String: Any] = ["id": userId, "name": DeviceIdentity.currentName]
-
-        db.collection("users").document(userId).setData([
-            "friends": FieldValue.arrayUnion([them]),
-            "friendRequests": FieldValue.arrayRemove([them]),
-        ], merge: true)
-
-        db.collection("users").document(friend.id).setData([
             "friends": FieldValue.arrayUnion([me])
-        ], merge: true)
-    }
-
-    func declineFriendRequest(_ friend: Friend) {
-        db.collection("users").document(userId).setData([
-            "friendRequests": FieldValue.arrayRemove([["id": friend.id, "name": friend.name]])
-        ], merge: true)
+        ], merge: true) { error in
+            completion(error == nil ? nil : "Couldn't add friend. Try again.")
+        }
     }
 
     func removeFriend(_ friend: Friend) {

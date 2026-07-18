@@ -224,7 +224,7 @@ struct ScanFriendView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .alert(isError ? "Couldn't add" : "Request sent",
+            .alert(isError ? "Couldn't add" : "Friend added",
                    isPresented: Binding(get: { resultMessage != nil },
                                         set: { if !$0 { resultMessage = nil } })) {
                 Button("OK") { dismiss() }
@@ -240,9 +240,9 @@ struct ScanFriendView: View {
             resultMessage = "That doesn't look like a Checkpoint code."
             return
         }
-        userManager.sendFriendRequest(toUserId: parsed.id, name: parsed.name) { error in
+        userManager.addFriend(toUserId: parsed.id, name: parsed.name) { error in
             isError = error != nil
-            resultMessage = error ?? "\(parsed.name) will get your request to connect."
+            resultMessage = error ?? "You're now connected with \(parsed.name). You'll both be alerted in an emergency."
         }
     }
 }

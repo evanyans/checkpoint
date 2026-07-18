@@ -48,9 +48,11 @@ struct ContentView: View {
                     sessionManager.stopNotificationsListener()
                 }
                 if newValue != nil, role == nil,
-                   sessionManager.activeSession?.ownerId != userManager.userId {
+                   sessionManager.activeSession?.ownerId != userManager.userId,
+                   sessionManager.activeSession?.isRecent == true {
                     // A new emergency arrived while we're idle: alert this friend.
-                    // Never alert on a session we own (e.g. a stale one we triggered).
+                    // Never alert on a session we own (e.g. a stale one we triggered),
+                    // and never on a stale/old one that's lingered unresolved.
                     cover = .alert
                 } else if newValue == nil, role == .viewer {
                     // The broadcaster ended the session: reset this viewer cleanly.
@@ -66,6 +68,10 @@ struct ContentView: View {
             .onChange(of: sessionManager.activeSession?.response) { _, newValue in
                 guard role == .broadcaster, let newValue, let response = FriendResponse(rawValue: newValue) else { return }
                 hapticManager.play(response)
+            }
+            .onChange(of: sessionManager.viewedSessionEnded) { _, ended in
+                // The broadcaster ended (or deleted) the session we're watching.
+                if ended, role == .viewer { resetViewer() }
             }
             .fullScreenCover(isPresented: coverBinding) {
                 switch cover {
@@ -131,7 +137,10 @@ struct ContentView: View {
 
     private func triggerEmergency() {
         guard role == nil else { return }
+        // Present the emergency screen instantly; everything below loads on-screen.
         role = .broadcaster
+        cover = .emergency
+
         sessionManager.createSession(
             channelName: AgoraConfig.channelName,
             ownerId: userManager.userId,
@@ -139,7 +148,6 @@ struct ContentView: View {
             escalationPhone: autoCallNumber,
             escalationDelayMinutes: autoCallDelayMinutes
         )
-        stream.join(asBroadcaster: true)
         locationManager.requestPermission()
         locationManager.startUpdating()
 
@@ -150,24 +158,30 @@ struct ContentView: View {
         }
         stream.setFrameDelegate(faceCapture)
 
-        cover = .emergency
+        // Heavy Agora join runs off the main thread so it never blocks the UI.
+        DispatchQueue.global(qos: .userInitiated).async {
+            stream.join(asBroadcaster: true)
+        }
     }
 
     private func viewStream() {
-        role = .viewer
         // Show the emergency screen immediately so the response buttons are
         // available right away; the video connects in the background.
+        role = .viewer
         cover = .emergency
+
         if let id = sessionManager.activeSession?.id {
             sessionManager.listenToCaptures(sessionId: id)
+            // Watch this exact session so we close the moment the victim ends it.
+            sessionManager.watchViewedSession(sessionId: id)
         }
         // Manual snapshots from the viewer flow into the same evidence pipeline.
         stream.onSnapshot = { jpeg in
             guard let id = sessionManager.activeSession?.id else { return }
             sessionManager.addCapture(sessionId: id, jpeg: jpeg)
         }
-        // Defer the heavy Agora join so the screen appears without a hitch.
-        DispatchQueue.main.async {
+        // Heavy Agora join runs off the main thread so the screen isn't blocked.
+        DispatchQueue.global(qos: .userInitiated).async {
             stream.join(asBroadcaster: false)
         }
     }
@@ -180,6 +194,7 @@ struct ContentView: View {
         stream.leave()
         sessionManager.stopCapturesListener()
         sessionManager.stopNotificationsListener()
+        sessionManager.stopWatchingViewedSession()
         role = nil
         cover = nil
     }

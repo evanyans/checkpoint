@@ -1,9 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(plutil *)",
-      "WebFetch(domain:firebase.google.com)",
-      "WebSearch"
+      "Bash(xcodebuild -project checkpoint.xcodeproj -scheme checkpoint -destination 'generic/platform=iOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO -quiet)",
+      "Bash(xcodebuild -project checkpoint.xcodeproj -list)",
+      "Bash(xcrun simctl *)",
+      "Bash(xcodebuild -project checkpoint.xcodeproj -scheme checkpoint -destination 'platform=iOS Simulator,name=iPhone 15 Pro' -configuration Debug build CODE_SIGNING_ALLOWED=NO)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:elevenlabs.io)",
+      "Bash(node --check index.js)",
+      "Bash(xcodebuild -project checkpoint.xcodeproj -scheme checkpoint -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO)",
+      "Bash(npm --version)",
+      "Bash(echo \"npm: $\\(npm --version 2>/dev/null || echo MISSING\\)\")",
+      "Bash(firebase --version)",
+      "Bash(echo \"firebase-tools: $\\(firebase --version 2>/dev/null || echo MISSING\\)\")",
+      "WebFetch(domain:ai.google.dev)"
     ]
   }
 }
