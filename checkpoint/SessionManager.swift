@@ -50,12 +50,14 @@ struct EmergencySession: Identifiable, Equatable {
 final class SessionManager: ObservableObject {
     @Published var activeSession: EmergencySession?
     @Published var captures: [CaptureItem] = []
+    @Published var notifications: [NotificationLogEntry] = []
 
     private(set) var createdSessionId: String?
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
     private var capturesListener: ListenerRegistration?
+    private var notificationsListener: ListenerRegistration?
 
     func createSession(channelName: String, ownerId: String, notifyIds: [String]) {
         let ref = db.collection("sessions").document()
@@ -90,6 +92,42 @@ final class SessionManager: ObservableObject {
         // Attach an ETA for "coming"; clear any stale ETA for other responses.
         data["etaMinutes"] = etaMinutes ?? FieldValue.delete()
         db.collection("sessions").document(sessionId).updateData(data)
+
+        // Also append to the append-only notification log so the broadcaster and
+        // every other viewer can see who has already acted (e.g. someone already
+        // called 911), instead of only ever seeing the single latest response.
+        addNotification(sessionId: sessionId, response: response,
+                        actor: DeviceIdentity.currentName, etaMinutes: etaMinutes)
+    }
+
+    func addNotification(sessionId: String, response: String, actor: String, etaMinutes: Int? = nil) {
+        var data: [String: Any] = [
+            "actor": actor,
+            "action": response,
+            "createdAt": FieldValue.serverTimestamp(),
+        ]
+        if let etaMinutes { data["etaMinutes"] = etaMinutes }
+        db.collection("sessions").document(sessionId).collection("notifications").addDocument(data: data)
+    }
+
+    func listenToNotifications(sessionId: String) {
+        notificationsListener?.remove()
+        notificationsListener = db.collection("sessions").document(sessionId).collection("notifications")
+            .order(by: "createdAt", descending: true)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                let items = snapshot?.documents.map {
+                    NotificationLogEntry(id: $0.documentID, data: $0.data())
+                } ?? []
+                DispatchQueue.main.async {
+                    self?.notifications = items
+                }
+            }
+    }
+
+    func stopNotificationsListener() {
+        notificationsListener?.remove()
+        notificationsListener = nil
+        notifications = []
     }
 
     func addCapture(sessionId: String, jpeg: Data) {

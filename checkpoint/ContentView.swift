@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  checkpoint
 //
-//  Created by Evan Yan on 2026-07-14.
+//  Created by Evan Yan on 2026-07-17.
 //
 
 import SwiftUI
@@ -37,8 +37,17 @@ struct ContentView: View {
                 if phase == .active { checkPendingTrigger() }
             }
             .onChange(of: sessionManager.activeSession?.id) { _, newValue in
-                if newValue != nil, role == nil {
+                // Keep the responder-activity log listener bound to the live session
+                // (both broadcaster and viewer resolve the same activeSession).
+                if let newValue {
+                    sessionManager.listenToNotifications(sessionId: newValue)
+                } else {
+                    sessionManager.stopNotificationsListener()
+                }
+                if newValue != nil, role == nil,
+                   sessionManager.activeSession?.ownerId != userManager.userId {
                     // A new emergency arrived while we're idle: alert this friend.
+                    // Never alert on a session we own (e.g. a stale one we triggered).
                     cover = .alert
                 } else if newValue == nil, role == .viewer {
                     // The broadcaster ended the session: reset this viewer cleanly.
@@ -165,6 +174,7 @@ struct ContentView: View {
     private func resetViewer() {
         stream.leave()
         sessionManager.stopCapturesListener()
+        sessionManager.stopNotificationsListener()
         role = nil
         cover = nil
     }

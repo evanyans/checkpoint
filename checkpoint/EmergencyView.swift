@@ -66,6 +66,8 @@ struct EmergencyView: View {
                         .cornerRadius(12)
                 }
 
+                NotificationLogView(entries: sessionManager.notifications)
+
                 Button {
                     discreetActive = true
                 } label: {
@@ -132,6 +134,10 @@ struct EmergencyView: View {
                     }
                 }
                 .frame(height: 52)
+            }
+
+            if !sessionManager.notifications.isEmpty {
+                NotificationLogView(entries: sessionManager.notifications, maxHeight: 84)
             }
 
             HStack(spacing: 8) {

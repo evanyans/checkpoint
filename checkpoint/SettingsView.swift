@@ -13,6 +13,9 @@ struct SettingsView: View {
 
     @State private var newFriendCode = ""
     @State private var addError: String?
+    @State private var addSuccess: String?
+    @State private var showMyQR = false
+    @State private var showScanner = false
 
     var body: some View {
         NavigationStack {
@@ -38,26 +41,78 @@ struct SettingsView: View {
                     }
                 }
 
+                if !userManager.incomingRequests.isEmpty {
+                    Section {
+                        ForEach(userManager.incomingRequests) { request in
+                            HStack(spacing: 12) {
+                                AvatarView(image: nil, name: request.name, size: 40)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(request.name).font(.subheadline.bold())
+                                    Text("wants to be your safety contact")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button {
+                                    userManager.acceptFriendRequest(request)
+                                } label: {
+                                    Text("Accept").font(.caption.bold())
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .buttonBorderShape(.capsule)
+                                Button {
+                                    userManager.declineFriendRequest(request)
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("Friend requests")
+                    } footer: {
+                        Text("Accepting links you both — you'll each be alerted when the other triggers an emergency.")
+                    }
+                }
+
                 Section {
+                    Button {
+                        showScanner = true
+                    } label: {
+                        Label("Scan a friend's QR code", systemImage: "qrcode.viewfinder")
+                    }
+                    Button {
+                        showMyQR = true
+                    } label: {
+                        Label("Show my QR code", systemImage: "qrcode")
+                    }
+
                     HStack {
-                        TextField("Enter friend code", text: $newFriendCode)
+                        TextField("Or enter a friend code", text: $newFriendCode)
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
-                        Button("Add") {
-                            userManager.addFriend(byCode: newFriendCode) { error in
+                        Button("Send") {
+                            userManager.sendFriendRequest(byCode: newFriendCode) { error in
                                 addError = error
-                                if error == nil { newFriendCode = "" }
+                                if error == nil {
+                                    addSuccess = "Request sent."
+                                    newFriendCode = ""
+                                }
                             }
                         }
                         .disabled(newFriendCode.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                     if let addError {
                         Text(addError).font(.caption).foregroundStyle(.red)
+                    } else if let addSuccess {
+                        Text(addSuccess).font(.caption).foregroundStyle(.green)
                     }
                 } header: {
                     Text("Add a friend")
                 } footer: {
-                    Text("Share your code with a friend and enter theirs. Friends you add are alerted when you trigger an emergency.")
+                    Text("Scan a friend's QR (or send a code). They accept the request, and you're both linked — no need to add each other separately.")
                 }
 
                 Section("Your friends") {
@@ -90,6 +145,12 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .sheet(isPresented: $showMyQR) {
+                MyQRView(userManager: userManager)
+            }
+            .sheet(isPresented: $showScanner) {
+                ScanFriendView(userManager: userManager)
+            }
         }
     }
 }

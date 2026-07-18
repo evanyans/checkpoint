@@ -10,6 +10,7 @@
 		E2B07FD3300B1FF900DED108 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FD2300B1FF900DED108 /* FirebaseCore */; };
 		E2B07FD5300B200E00DED108 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FD4300B200E00DED108 /* FirebaseFirestore */; };
 		E2B07FE8300B266100DED108 /* RtcBasic in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FE7300B266100DED108 /* RtcBasic */; };
+		E2B0803A300B2DC300DED108 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = E2B08039300B2DC300DED108 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E2B07FD3300B1FF900DED108 /* FirebaseCore in Frameworks */,
+				E2B0803A300B2DC300DED108 /* FirebaseStorage in Frameworks */,
 				E2B07FD5300B200E00DED108 /* FirebaseFirestore in Frameworks */,
 				E2B07FE8300B266100DED108 /* RtcBasic in Frameworks */,
 			);
@@ -132,6 +134,7 @@
 				E2B07FD2300B1FF900DED108 /* FirebaseCore */,
 				E2B07FD4300B200E00DED108 /* FirebaseFirestore */,
 				E2B07FE7300B266100DED108 /* RtcBasic */,
+				E2B08039300B2DC300DED108 /* FirebaseStorage */,
 			);
 			productName = checkpoint;
 			productReference = E2B07F8E300B165600DED108 /* checkpoint.app */;
@@ -424,6 +427,10 @@
 				DEVELOPMENT_TEAM = NSL86F37B9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "checkpoint uses the camera to stream live video during an emergency.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "checkpoint shares your location with your friends during an emergency.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "checkpoint uses the microphone to stream live audio during an emergency.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "checkpoint lets you set a profile photo from your library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -456,6 +463,10 @@
 				DEVELOPMENT_TEAM = NSL86F37B9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "checkpoint uses the camera to stream live video during an emergency.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "checkpoint shares your location with your friends during an emergency.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "checkpoint uses the microphone to stream live audio during an emergency.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "checkpoint lets you set a profile photo from your library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -637,6 +648,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E2B07FE6300B264900DED108 /* XCRemoteSwiftPackageReference "AgoraRtcEngine_iOS" */;
 			productName = RtcBasic;
+		};
+		E2B08039300B2DC300DED108 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E2B07FD0300B1FA500DED108 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
