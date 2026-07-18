@@ -30,6 +30,7 @@ struct LogListView: View {
                 }
             }
             .navigationTitle("Log")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

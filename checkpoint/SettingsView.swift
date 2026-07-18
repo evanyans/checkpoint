@@ -183,6 +183,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showMyQR) {
                 MyQRView(userManager: userManager)
             }
