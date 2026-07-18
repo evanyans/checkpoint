@@ -19,6 +19,7 @@ struct ContentView: View {
     @StateObject private var stream = AgoraStreamManager()
     @StateObject private var sessionManager = SessionManager()
     @StateObject private var locationManager = LocationManager()
+    @StateObject private var escalation = EscalationController()
     @State private var hapticManager = HapticManager()
     @State private var faceCapture = FaceCaptureManager()
     @State private var role: EmergencyRole?
@@ -73,6 +74,12 @@ struct ContentView: View {
                 // The broadcaster ended (or deleted) the session we're watching.
                 if ended, role == .viewer { resetViewer() }
             }
+            .onChange(of: sessionManager.activeSession?.viewerIds.count ?? 0) { _, count in
+                // A friend watching means no auto-call is needed; pause it while
+                // anyone is on the stream, resume (fresh countdown) when they leave.
+                guard role == .broadcaster else { return }
+                if count > 0 { escalation.suppress() } else { escalation.unsuppress() }
+            }
             .fullScreenCover(isPresented: coverBinding) {
                 switch cover {
                 case .alert:
@@ -82,6 +89,7 @@ struct ContentView: View {
                         role: role ?? .viewer,
                         stream: stream,
                         sessionManager: sessionManager,
+                        escalation: escalation,
                         onEnd: endSession
                     )
                 case .none:
@@ -151,6 +159,15 @@ struct ContentView: View {
         }
         stream.setFrameDelegate(faceCapture)
 
+        // Arm the on-screen auto-escalation countdown when an auto-call number is set.
+        if !autoCallNumber.isEmpty {
+            escalation.onEscalate = {
+                guard let id = sessionManager.createdSessionId else { return }
+                sessionManager.requestEscalation(sessionId: id)
+            }
+            escalation.start(delayMinutes: autoCallDelayMinutes)
+        }
+
         // Heavy Agora join runs off the main thread so it never blocks the UI.
         DispatchQueue.global(qos: .userInitiated).async {
             stream.join(asBroadcaster: true)
@@ -167,6 +184,8 @@ struct ContentView: View {
             sessionManager.listenToCaptures(sessionId: id)
             // Watch this exact session so we close the moment the victim ends it.
             sessionManager.watchViewedSession(sessionId: id)
+            // Register presence so the victim & other viewers see the watcher count.
+            sessionManager.addViewer(sessionId: id, userId: userManager.userId)
         }
         // Manual snapshots from the viewer flow into the same evidence pipeline.
         stream.onSnapshot = { jpeg in
@@ -184,6 +203,9 @@ struct ContentView: View {
     }
 
     private func resetViewer() {
+        if let id = sessionManager.activeSession?.id {
+            sessionManager.removeViewer(sessionId: id, userId: userManager.userId)
+        }
         stream.leave()
         sessionManager.stopCapturesListener()
         sessionManager.stopNotificationsListener()
@@ -199,6 +221,7 @@ struct ContentView: View {
         }
         stream.leave()
         locationManager.stopUpdating()
+        escalation.stop()
         role = nil
         cover = nil
     }

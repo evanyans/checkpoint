@@ -9,7 +9,8 @@ import SwiftUI
 import CoreLocation
 
 struct LogListView: View {
-    @StateObject private var logManager = LogManager()
+    @ObservedObject var logManager: LogManager
+    @ObservedObject var readState: LogReadState
 
     var body: some View {
         NavigationStack {
@@ -21,51 +22,59 @@ struct LogListView: View {
                     ForEach(logManager.entries) { entry in
                         NavigationLink {
                             LogDetailView(entry: entry, logManager: logManager)
+                                .onAppear { readState.markOpened(entry.id) }
                         } label: {
-                            LogRow(entry: entry)
+                            LogRow(entry: entry, unread: !readState.isOpened(entry.id))
                         }
                     }
                 }
             }
             .navigationTitle("Log")
         }
-        .onAppear { logManager.start() }
-        .onDisappear { logManager.stop() }
     }
 }
 
 private struct LogRow: View {
     let entry: LogEntry
+    let unread: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(entry.triggeredBy)
-                    .font(.headline)
-                Spacer()
-                if entry.status == "triggered" {
-                    Text("LIVE")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.red)
-                        .clipShape(Capsule())
+        HStack(alignment: .top, spacing: 8) {
+            // Reserve the dot's space when read so rows stay aligned.
+            Circle()
+                .fill(unread ? Color.accentColor : Color.clear)
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(entry.triggeredBy)
+                        .font(.headline)
+                    Spacer()
+                    if entry.status == "triggered" {
+                        Text("LIVE")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.red)
+                            .clipShape(Capsule())
+                    }
                 }
-            }
-            if let date = entry.createdAt {
-                Text(date, format: .dateTime.month().day().hour().minute())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            HStack(spacing: 12) {
-                if let raw = entry.response, let response = FriendResponse(rawValue: raw) {
-                    Label(response.shortLabel, systemImage: response.iconName)
+                if let date = entry.createdAt {
+                    Text(date, format: .dateTime.month().day().hour().minute())
                         .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                if entry.captureCount > 0 {
-                    Label("\(entry.captureCount)", systemImage: "camera.fill")
-                        .font(.caption)
+                HStack(spacing: 12) {
+                    if let raw = entry.response, let response = FriendResponse(rawValue: raw) {
+                        Label(response.shortLabel, systemImage: response.iconName)
+                            .font(.caption)
+                    }
+                    if entry.captureCount > 0 {
+                        Label("\(entry.captureCount)", systemImage: "camera.fill")
+                            .font(.caption)
+                    }
                 }
             }
         }
@@ -82,6 +91,18 @@ struct LogDetailView: View {
     @State private var showMapOptions = false
     @State private var notes = ""
     @FocusState private var notesFocused: Bool
+
+    /// Maps the incident's raw analysis fields to a display state — nil hides the
+    /// section entirely (no evidence to analyze yet).
+    private var analysisState: AnalysisDisplayState? {
+        if let analysis = entry.analysis, analysis.present { return .result(analysis) }
+        switch entry.analysisStatus {
+        case "failed": return .failed(entry.analysisError)
+        case "done": return .noSuspect
+        case "analyzing": return .analyzing
+        default: return entry.captureCount > 0 ? .analyzing : nil
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -136,8 +157,8 @@ struct LogDetailView: View {
                         )
                 }
 
-                if let analysis = entry.analysis {
-                    IncidentAnalysisView(analysis: analysis)
+                if let state = analysisState {
+                    AnalysisSectionView(state: state)
                 }
 
                 Text("Captured evidence (\(captures.count))")

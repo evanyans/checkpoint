@@ -10,8 +10,7 @@
 //  even if the phone is taken, killed, or offline.
 //
 
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const { initializeApp } = require("firebase-admin/app");
@@ -35,32 +34,26 @@ const GEMINI_MODEL = "gemini-flash-latest";
 // Don't re-run Gemini on every rapid auto-capture; refresh at most this often.
 const ANALYSIS_THROTTLE_MS = 15000;
 
-exports.escalateOverdueSessions = onSchedule(
+// The victim's on-screen countdown drives escalation now: when their confirmation
+// window expires without an "I'm safe" tap, the app sets `escalate: true` on the
+// session, and this places the agent call. (Client-owned timing — see the
+// EscalationController in the iOS app.)
+exports.placeEscalationCall = onDocumentUpdated(
   {
-    schedule: "every 1 minutes",
+    document: "sessions/{sessionId}",
     secrets: [ELEVENLABS_API_KEY, ELEVENLABS_AGENT_ID, ELEVENLABS_PHONE_NUMBER_ID],
   },
-  async () => {
-    // Single-field query — no composite index needed. Few sessions are ever live.
-    const snap = await db.collection("sessions").where("status", "==", "triggered").get();
-    const now = Date.now();
+  async (event) => {
+    const before = event.data?.before?.data() || {};
+    const after = event.data?.after?.data();
+    if (!after) return;
 
-    const pending = [];
-    snap.forEach((doc) => {
-      const s = doc.data();
-      if (!s.escalationPhone) return; // auto-call not configured for this session
-      if (s.escalatedAt) return; // already handled
-      const createdAt = s.createdAt?.toMillis?.();
-      if (!createdAt) return; // serverTimestamp not resolved yet — catch it next minute
-      const delayMs = (s.escalationDelayMinutes ?? 5) * 60 * 1000;
-      if (now < createdAt + delayMs) return; // not overdue yet
-      pending.push(placeCall(doc.id, s));
-    });
+    // Only act on the moment `escalate` flips true, and only once.
+    if (after.escalate !== true || before.escalate === true) return;
+    if (after.escalatedAt) return;
+    if (!after.escalationPhone) return;
 
-    if (pending.length) {
-      logger.info(`Escalating ${pending.length} overdue session(s).`);
-      await Promise.allSettled(pending);
-    }
+    await placeCall(event.params.sessionId, after);
   }
 );
 
@@ -255,6 +248,17 @@ exports.analyzeSuspectFromCaptures = onDocumentCreated(
     });
     if (parts.length === 1) return; // no usable images
 
+    // Publish an "analyzing" status so the app can show a live spinner. We also
+    // bump analysisUpdatedAt here so the throttle covers this in-flight run.
+    await sessionRef.update({
+      analysisStatus: "analyzing",
+      analysisUpdatedAt: FieldValue.serverTimestamp(),
+    });
+
+    const fail = async (reason) => {
+      await sessionRef.update({ analysisStatus: "failed", analysisError: String(reason).slice(0, 300) });
+    };
+
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY.value()}`,
@@ -269,34 +273,37 @@ exports.analyzeSuspectFromCaptures = onDocumentCreated(
       );
       const json = await res.json();
       if (!res.ok) {
-        logger.error("Gemini analysis failed", { sessionId, status: res.status, json });
+        const msg = json?.error?.message || `HTTP ${res.status}`;
+        logger.error(`Gemini analysis failed (${res.status}): ${msg}`, { sessionId, json });
+        await fail(`${res.status}: ${msg}`);
         return;
       }
 
       const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) {
-        // Often means the response was blocked — surface the reason to the logs.
-        logger.warn("Gemini returned no text", {
-          sessionId,
-          finishReason: json.candidates?.[0]?.finishReason,
-          promptFeedback: json.promptFeedback,
-        });
+        const reason = json.candidates?.[0]?.finishReason || "no content returned";
+        logger.warn("Gemini returned no text", { sessionId, reason, promptFeedback: json.promptFeedback });
+        await fail(`blocked or empty (${reason})`);
         return;
       }
 
       const parsed = parseGeminiJson(text);
       if (!parsed) {
         logger.error("Gemini JSON parse failed", { sessionId, text: text.slice(0, 800) });
+        await fail("could not parse model response");
         return;
       }
 
       await sessionRef.update({
         analysis: { ...parsed, model: GEMINI_MODEL, capturesAnalyzed: parts.length - 1 },
+        analysisStatus: "done",
+        analysisError: FieldValue.delete(),
         analysisUpdatedAt: FieldValue.serverTimestamp(),
       });
       logger.info("Suspect analysis updated", { sessionId, present: parsed.present });
     } catch (err) {
       logger.error("Gemini analysis error", { sessionId, err: String(err) });
+      await fail(err);
     }
   }
 );

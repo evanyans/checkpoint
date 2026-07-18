@@ -23,6 +23,8 @@ struct LogEntry: Identifiable {
     let captureCount: Int
     let notes: String
     let analysis: SuspectAnalysis?
+    let analysisStatus: String?
+    let analysisError: String?
 
     init(id: String, data: [String: Any]) {
         self.id = id
@@ -38,6 +40,8 @@ struct LogEntry: Identifiable {
             data: data["analysis"] as? [String: Any],
             updatedAt: (data["analysisUpdatedAt"] as? Timestamp)?.dateValue()
         )
+        self.analysisStatus = data["analysisStatus"] as? String
+        self.analysisError = data["analysisError"] as? String
     }
 
     var coordinate: CLLocationCoordinate2D? {
