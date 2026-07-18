@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Secrets — never commit real keys/tokens
+Secrets.swift
