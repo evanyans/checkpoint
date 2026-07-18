@@ -59,21 +59,53 @@ exports.placeEscalationCall = onDocumentUpdated(
 
 //
 //  Emergency fan-out: when a new session is written, push a notification to
-//  every friend in notifyIds so their phone rings even if the app is closed.
+//  every P1 friend so their phone rings even if the app is closed. P2 friends
+//  are held back and only pushed if no one has joined after 2 minutes — see
+//  notifyP2FriendsOnFallback below.
 //
 exports.notifyFriendsOnEmergency = onDocumentCreated("sessions/{sessionId}", async (event) => {
   const session = event.data?.data();
   if (!session) return;
 
-  const notifyIds = Array.isArray(session.notifyIds) ? session.notifyIds : [];
-  if (notifyIds.length === 0) return;
+  // Prefer the explicit P1 list; fall back to notifyIds for older sessions.
+  const p1Ids = Array.isArray(session.p1NotifyIds)
+    ? session.p1NotifyIds
+    : Array.isArray(session.notifyIds) ? session.notifyIds : [];
+  if (p1Ids.length === 0) return;
 
-  const name = session.triggeredBy || "A friend";
+  await fanoutPush(event.params.sessionId, p1Ids, session.triggeredBy, "P1");
+});
+
+//
+//  P2 fallback fan-out: fires when the broadcaster's phone flips p2Fanout=true
+//  (after 2 min with no viewers). Sends the same emergency push to any P2
+//  friends who weren't alerted initially.
+//
+exports.notifyP2FriendsOnFallback = onDocumentUpdated("sessions/{sessionId}", async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after = event.data?.after?.data();
+  if (!after) return;
+
+  if (after.p2Fanout !== true || before.p2Fanout === true) return;
+  if (after.p2FanoutSentAt) return;
+
+  const p2Ids = Array.isArray(after.p2NotifyIds) ? after.p2NotifyIds : [];
+  if (p2Ids.length === 0) return;
+
+  await fanoutPush(event.params.sessionId, p2Ids, after.triggeredBy, "P2");
+
+  await db.collection("sessions").doc(event.params.sessionId).update({
+    p2FanoutSentAt: FieldValue.serverTimestamp(),
+  });
+});
+
+async function fanoutPush(sessionId, userIds, triggeredBy, tier) {
+  const name = triggeredBy || "A friend";
 
   // Firestore's `in` query caps at 30 ids; chunk to stay within the limit.
   const tokens = [];
-  for (let i = 0; i < notifyIds.length; i += 30) {
-    const chunk = notifyIds.slice(i, i + 30);
+  for (let i = 0; i < userIds.length; i += 30) {
+    const chunk = userIds.slice(i, i + 30);
     const snap = await db.collection("users").where("__name__", "in", chunk).get();
     snap.forEach((doc) => {
       const token = doc.get("fcmToken");
@@ -82,9 +114,7 @@ exports.notifyFriendsOnEmergency = onDocumentCreated("sessions/{sessionId}", asy
   }
 
   if (tokens.length === 0) {
-    logger.info("Emergency created but no friend tokens to notify", {
-      sessionId: event.params.sessionId,
-    });
+    logger.info(`Emergency ${tier} fan-out skipped: no tokens`, { sessionId });
     return;
   }
 
@@ -98,17 +128,18 @@ exports.notifyFriendsOnEmergency = onDocumentCreated("sessions/{sessionId}", asy
       },
     },
     data: {
-      sessionId: event.params.sessionId,
+      sessionId,
       triggeredBy: name,
+      tier,
     },
   });
 
-  logger.info("Emergency push fan-out", {
-    sessionId: event.params.sessionId,
+  logger.info(`Emergency ${tier} fan-out`, {
+    sessionId,
     sent: res.successCount,
     failed: res.failureCount,
   });
-});
+}
 
 async function placeCall(sessionId, s) {
   const ref = db.collection("sessions").doc(sessionId);
