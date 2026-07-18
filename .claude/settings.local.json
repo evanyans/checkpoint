@@ -25,7 +25,11 @@
       "Bash(git -C /Users/selenaxu/Documents/github/checkpoint remote -v)",
       "Bash(git config *)",
       "Bash(command -v brew)",
-      "Bash(brew --version)"
+      "Bash(brew --version)",
+      "Bash(grep -rn *)",
+      "Bash(node --check functions/index.js)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
