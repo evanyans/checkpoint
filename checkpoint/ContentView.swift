@@ -33,6 +33,12 @@ struct ContentView: View {
     @State private var pendingTrigger: DispatchWorkItem?
     private let holdDuration: TimeInterval = 3
 
+    // Fires after 2 min if no friend has joined yet — asks the backend to fan
+    // out the push to any P2 friends. Cancelled when someone joins or the
+    // broadcaster ends the session.
+    @State private var p2FallbackTask: DispatchWorkItem?
+    private let p2FallbackDelay: TimeInterval = 120
+
     @AppStorage("autoCallNumber") private var autoCallNumber = ""
     @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
     @AppStorage("disguiseAlerts") private var disguiseAlerts = true
@@ -93,7 +99,14 @@ struct ContentView: View {
                 // A friend watching means no auto-call is needed; pause it while
                 // anyone is on the stream, resume (fresh countdown) when they leave.
                 guard role == .broadcaster else { return }
-                if count > 0 { escalation.suppress() } else { escalation.unsuppress() }
+                if count > 0 {
+                    escalation.suppress()
+                    // Someone joined — cancel the P2 push fallback.
+                    p2FallbackTask?.cancel()
+                    p2FallbackTask = nil
+                } else {
+                    escalation.unsuppress()
+                }
             }
             .fullScreenCover(isPresented: coverBinding) {
                 switch cover {
@@ -217,13 +230,27 @@ struct ContentView: View {
         sessionManager.createSession(
             channelName: AgoraConfig.channelName,
             ownerId: userManager.userId,
-            notifyIds: userManager.friendIds,
+            p1NotifyIds: userManager.p1FriendIds,
+            p2NotifyIds: userManager.p2FriendIds,
             escalationPhone: autoCallNumber,
             escalationDelayMinutes: autoCallDelayMinutes,
             disguiseNotifications: disguiseAlerts
         )
         locationManager.requestPermission()
         locationManager.startUpdating()
+
+        // Schedule the P2 push fallback: if no one has joined in 2 min, flag the
+        // session so the backend fans out to P2 friends.
+        if !userManager.p2FriendIds.isEmpty {
+            let task = DispatchWorkItem {
+                guard let id = sessionManager.createdSessionId else { return }
+                if sessionManager.activeSession?.viewerIds.isEmpty ?? true {
+                    sessionManager.requestP2Fanout(sessionId: id)
+                }
+            }
+            p2FallbackTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + p2FallbackDelay, execute: task)
+        }
 
         // Auto-capture evidence stills when a person is detected on camera.
         faceCapture.onCapture = { jpeg in
@@ -295,6 +322,8 @@ struct ContentView: View {
         stream.leave()
         locationManager.stopUpdating()
         escalation.stop()
+        p2FallbackTask?.cancel()
+        p2FallbackTask = nil
         role = nil
         cover = nil
     }

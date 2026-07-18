@@ -17,6 +17,8 @@ import FirebaseFirestore
 struct Friend: Identifiable, Equatable {
     let id: String
     let name: String
+    /// 1 = alerted immediately, 2 = alerted only if no one joins in the first 2 min.
+    var priority: Int = 1
 }
 
 /// The details a 911 operator would need. Populated by onboarding (TBD); for now
@@ -93,6 +95,8 @@ final class UserManager: ObservableObject {
     }
 
     var friendIds: [String] { friends.map(\.id) }
+    var p1FriendIds: [String] { friends.filter { $0.priority == 1 }.map(\.id) }
+    var p2FriendIds: [String] { friends.filter { $0.priority == 2 }.map(\.id) }
 
     func start() {
         let ref = db.collection("users").document(userId)
@@ -120,10 +124,13 @@ final class UserManager: ObservableObject {
         listener = ref.addSnapshotListener { [weak self] snapshot, _ in
             let data = snapshot?.data()
             let raw = data?["friends"] as? [[String: Any]] ?? []
+            // Priority lives in a parallel {friendId: 1|2} map so the existing friends
+            // array stays a stable {id, name} shape and arrayUnion/Remove keep working.
+            let priorities = data?["friendPriorities"] as? [String: Int] ?? [:]
             let friends = raw.compactMap { dict -> Friend? in
                 guard let id = dict["id"] as? String,
                       let name = dict["name"] as? String else { return nil }
-                return Friend(id: id, name: name)
+                return Friend(id: id, name: name, priority: priorities[id] ?? 1)
             }
             let profile = UserProfile(map: data?["profile"] as? [String: Any] ?? [:])
             let photo = Self.decodePhoto(data?["photo"] as? String)
@@ -234,7 +241,18 @@ final class UserManager: ObservableObject {
 
     func removeFriend(_ friend: Friend) {
         db.collection("users").document(userId).updateData([
-            "friends": FieldValue.arrayRemove([["id": friend.id, "name": friend.name]])
+            "friends": FieldValue.arrayRemove([["id": friend.id, "name": friend.name]]),
+            "friendPriorities.\(friend.id)": FieldValue.delete(),
         ])
+    }
+
+    /// Updates the notification priority (1 or 2) for a friend on my own doc.
+    /// Dot-notation targets a single key inside the friendPriorities map so we
+    /// never clobber other friends' entries.
+    func updateFriendPriority(friendId: String, priority: Int) {
+        let clamped = max(1, min(2, priority))
+        db.collection("users").document(userId).setData([
+            "friendPriorities": [friendId: clamped],
+        ], merge: true)
     }
 }

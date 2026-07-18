@@ -82,17 +82,24 @@ final class SessionManager: ObservableObject {
     private var notificationsListener: ListenerRegistration?
     private var viewedSessionListener: ListenerRegistration?
 
-    func createSession(channelName: String, ownerId: String, notifyIds: [String],
+    func createSession(channelName: String, ownerId: String,
+                       p1NotifyIds: [String], p2NotifyIds: [String],
                        escalationPhone: String? = nil, escalationDelayMinutes: Int? = nil,
                        disguiseNotifications: Bool = false) {
         let ref = db.collection("sessions").document()
         createdSessionId = ref.documentID
+        // Union goes in notifyIds so the existing in-app listener (which shows
+        // the alert to anyone in notifyIds) still reaches P2 friends who open
+        // the app on their own, even before the delayed push fires.
+        let allIds = Array(Set(p1NotifyIds + p2NotifyIds))
         var data: [String: Any] = [
             "channelName": channelName,
             "status": "triggered",
             "triggeredBy": DeviceIdentity.currentName,
             "ownerId": ownerId,
-            "notifyIds": notifyIds,
+            "notifyIds": allIds,
+            "p1NotifyIds": p1NotifyIds,
+            "p2NotifyIds": p2NotifyIds,
             "captureCount": 0,
             // When true, responder pushes back to me are disguised (see Cloud Function).
             "disguiseNotifications": disguiseNotifications,
@@ -105,6 +112,15 @@ final class SessionManager: ObservableObject {
             data["escalationDelayMinutes"] = escalationDelayMinutes
         }
         ref.setData(data)
+    }
+
+    /// Signals the backend to fan out the push to P2 friends. Set by the broadcaster
+    /// after 2 minutes if no viewer has joined yet.
+    func requestP2Fanout(sessionId: String) {
+        db.collection("sessions").document(sessionId).updateData([
+            "p2Fanout": true,
+            "p2FanoutRequestedAt": FieldValue.serverTimestamp(),
+        ])
     }
 
     func resolveSession(_ id: String) {

@@ -12,12 +12,17 @@ import PhotosUI
 struct FriendProfileView: View {
     let friendId: String
     let fallbackName: String
-    let userManager: UserManager
+    @ObservedObject var userManager: UserManager
 
     @State private var name = ""
     @State private var profile = UserProfile()
     @State private var photo: UIImage?
     @State private var loaded = false
+
+    /// Current priority for this friend, sourced from my own friends list.
+    private var priority: Int {
+        userManager.friends.first(where: { $0.id == friendId })?.priority ?? 1
+    }
 
     var body: some View {
         Form {
@@ -29,6 +34,30 @@ struct FriendProfileView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear)
+            }
+
+            Section {
+                ForEach([1, 2], id: \.self) { p in
+                    Button {
+                        userManager.updateFriendPriority(friendId: friendId, priority: p)
+                    } label: {
+                        HStack {
+                            Text("Priority \(p)")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if priority == p {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("Priority")
+            } footer: {
+                Text("Priority 1 friends get the push immediately. Priority 2 friends only get it if no one joins the stream within 2 minutes.")
             }
 
             Section("Description") {
