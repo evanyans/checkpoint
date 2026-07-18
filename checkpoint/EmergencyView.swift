@@ -19,6 +19,7 @@ struct EmergencyView: View {
     let role: EmergencyRole
     @ObservedObject var stream: AgoraStreamManager
     @ObservedObject var sessionManager: SessionManager
+    @ObservedObject var escalation: EscalationController
     let onEnd: () -> Void
 
     @State private var showEtaSheet = false
@@ -50,10 +51,13 @@ struct EmergencyView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
+                escalationBanner
+
                 videoArea
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.black)
                     .cornerRadius(12)
+                    .overlay(alignment: .topTrailing) { viewerCountBadge }
 
                 if let response = currentResponse {
                     Label(bannerText(for: response), systemImage: response.iconName)
@@ -89,7 +93,54 @@ struct EmergencyView: View {
             if discreetActive {
                 FakeScreenView { discreetActive = false }
             }
+
+            // Sits above everything (including discreet mode) so the safety check
+            // can never be missed.
+            if escalation.showConfirmation {
+                SafetyCheckOverlay(progress: escalation.confirmationProgress) {
+                    escalation.dismissAndRearm()
+                }
+            }
         }
+    }
+
+    @ViewBuilder
+    private var escalationBanner: some View {
+        if escalation.didEscalate {
+            escalationPill("Emergency call placed", icon: "phone.fill", color: .red)
+        } else if escalation.isSuppressed {
+            escalationPill("Auto-call paused — a friend is watching",
+                           icon: "eye.fill", color: .green)
+        } else if escalation.isArmed {
+            escalationPill("Auto-call in \(timeString(escalation.secondsRemaining))",
+                           icon: "phone.arrow.up.right.fill", color: .orange)
+        }
+    }
+
+    private func escalationPill(_ text: String, icon: String, color: Color) -> some View {
+        Label(text, systemImage: icon)
+            .font(.subheadline.bold())
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(color, in: Capsule())
+    }
+
+    private func timeString(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private var viewerCount: Int { sessionManager.activeSession?.viewerIds.count ?? 0 }
+
+    private var viewerCountBadge: some View {
+        Label("\(viewerCount) watching", systemImage: "eye.fill")
+            .font(.caption.bold())
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(.ultraThinMaterial, in: Capsule())
+            .padding(8)
     }
 
     // MARK: - Viewer
@@ -101,6 +152,7 @@ struct EmergencyView: View {
                 .background(Color.black)
                 .cornerRadius(12)
                 .overlay(alignment: .topLeading) { leaveButton }
+                .overlay(alignment: .topTrailing) { viewerCountBadge }
                 .overlay(alignment: .bottomTrailing) { captureButton }
 
             if let coordinate = sessionManager.activeSession?.coordinate {
@@ -286,5 +338,54 @@ struct EtaSheet: View {
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+/// The "are you safe?" dead-man's-switch popup. It has no "call now" action — the
+/// call fires automatically when the shrinking bar runs out. Tapping "I'm safe"
+/// cancels and re-arms the countdown.
+struct SafetyCheckOverlay: View {
+    let progress: Double
+    let onSafe: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.8).ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                Image(systemName: "exclamationmark.shield.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.orange)
+
+                Text("Are you safe?")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(.white)
+
+                Text("An emergency call is about to be placed automatically. Tap below if you're safe to stop it.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal)
+
+                // Shrinking bar — visual for the seconds remaining before the call.
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(.white.opacity(0.2))
+                        Capsule().fill(Color.orange)
+                            .frame(width: max(0, geo.size.width * progress))
+                    }
+                }
+                .frame(height: 12)
+                .padding(.horizontal)
+                .animation(.linear(duration: 0.06), value: progress)
+
+                Button(action: onSafe) {
+                    Text("I'm safe").primaryActionLabel()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .buttonBorderShape(.capsule)
+            }
+            .padding()
+        }
     }
 }

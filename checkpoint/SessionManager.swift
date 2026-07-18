@@ -26,6 +26,7 @@ struct EmergencySession: Identifiable, Equatable {
     let etaMinutes: Int?
     let ownerId: String?
     let notifyIds: [String]
+    let viewerIds: [String]
     let createdAt: Date?
     let analysis: SuspectAnalysis?
 
@@ -45,6 +46,7 @@ struct EmergencySession: Identifiable, Equatable {
         self.etaMinutes = data["etaMinutes"] as? Int
         self.ownerId = data["ownerId"] as? String
         self.notifyIds = data["notifyIds"] as? [String] ?? []
+        self.viewerIds = data["viewerIds"] as? [String] ?? []
         self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
         self.analysis = SuspectAnalysis(
             data: data["analysis"] as? [String: Any],
@@ -104,6 +106,29 @@ final class SessionManager: ObservableObject {
 
     func resolveSession(_ id: String) {
         db.collection("sessions").document(id).updateData(["status": "resolved"])
+    }
+
+    /// Signals the backend to place the escalation call now (the victim didn't
+    /// confirm they were safe in time). The Cloud Function watches this flag.
+    func requestEscalation(sessionId: String) {
+        db.collection("sessions").document(sessionId).updateData([
+            "escalate": true,
+            "escalationRequestedAt": FieldValue.serverTimestamp(),
+        ])
+    }
+
+    /// Viewer presence — used for the "N watching" count and to pause auto-escalation
+    /// while a friend is on the stream.
+    func addViewer(sessionId: String, userId: String) {
+        db.collection("sessions").document(sessionId).updateData([
+            "viewerIds": FieldValue.arrayUnion([userId])
+        ])
+    }
+
+    func removeViewer(sessionId: String, userId: String) {
+        db.collection("sessions").document(sessionId).updateData([
+            "viewerIds": FieldValue.arrayRemove([userId])
+        ])
     }
 
     func updateLocation(sessionId: String, coordinate: CLLocationCoordinate2D) {

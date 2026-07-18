@@ -77,6 +77,70 @@ struct SuspectAnalysis: Equatable {
     }
 }
 
+/// The lifecycle of the AI analysis, so the UI is never silently blank.
+enum AnalysisDisplayState {
+    case analyzing
+    case failed(String?)
+    case noSuspect
+    case result(SuspectAnalysis)
+}
+
+/// Renders whichever analysis state applies — spinner, failure, "no suspect", or
+/// the full description card.
+struct AnalysisSectionView: View {
+    let state: AnalysisDisplayState
+
+    var body: some View {
+        switch state {
+        case .result(let analysis):
+            IncidentAnalysisView(analysis: analysis)
+        case .analyzing:
+            statusCard {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Analyzing evidence…").font(.subheadline.bold())
+                        Text("The AI is describing the suspect from the captured stills.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+        case .noSuspect:
+            statusCard {
+                Label {
+                    Text("No suspect identified in the footage yet.").font(.subheadline)
+                } icon: {
+                    Image(systemName: "person.fill.questionmark").foregroundStyle(.secondary)
+                }
+            }
+        case .failed(let message):
+            statusCard {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Analysis couldn't complete", systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.orange)
+                    if let message, !message.isEmpty {
+                        Text(message).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text("It will retry automatically as new stills come in.")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+        }
+    }
+
+    private func statusCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("AI suspect description", systemImage: "sparkles")
+                .font(.subheadline.bold())
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
 struct IncidentAnalysisView: View {
     let analysis: SuspectAnalysis
 
