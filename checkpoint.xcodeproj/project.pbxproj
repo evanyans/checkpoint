@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		E2B07FD3300B1FF900DED108 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FD2300B1FF900DED108 /* FirebaseCore */; };
 		E2B07FD5300B200E00DED108 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FD4300B200E00DED108 /* FirebaseFirestore */; };
+		E2B07FE8300B266100DED108 /* RtcBasic in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FE7300B266100DED108 /* RtcBasic */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 			files = (
 				E2B07FD3300B1FF900DED108 /* FirebaseCore in Frameworks */,
 				E2B07FD5300B200E00DED108 /* FirebaseFirestore in Frameworks */,
+				E2B07FE8300B266100DED108 /* RtcBasic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -129,6 +131,7 @@
 			packageProductDependencies = (
 				E2B07FD2300B1FF900DED108 /* FirebaseCore */,
 				E2B07FD4300B200E00DED108 /* FirebaseFirestore */,
+				E2B07FE7300B266100DED108 /* RtcBasic */,
 			);
 			productName = checkpoint;
 			productReference = E2B07F8E300B165600DED108 /* checkpoint.app */;
@@ -214,6 +217,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E2B07FD0300B1FA500DED108 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				E2B07FE6300B264900DED108 /* XCRemoteSwiftPackageReference "AgoraRtcEngine_iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E2B07F8F300B165600DED108 /* Products */;
@@ -608,6 +612,14 @@
 				minimumVersion = 12.16.0;
 			};
 		};
+		E2B07FE6300B264900DED108 /* XCRemoteSwiftPackageReference "AgoraRtcEngine_iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AgoraIO/AgoraRtcEngine_iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.6.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -620,6 +632,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E2B07FD0300B1FA500DED108 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		E2B07FE7300B266100DED108 /* RtcBasic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E2B07FE6300B264900DED108 /* XCRemoteSwiftPackageReference "AgoraRtcEngine_iOS" */;
+			productName = RtcBasic;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TEMPLATE — download your own GoogleService-Info.plist from the Firebase
+  console (Project settings → your iOS app) and place it at
+  checkpoint/checkpoint/GoogleService-Info.plist. That file is gitignored.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>YOUR_API_KEY</string>
+	<key>GCM_SENDER_ID</key>
+	<string>YOUR_SENDER_ID</string>
+	<key>BUNDLE_ID</key>
+	<string>com.evanyan.checkpoint</string>
+	<key>PROJECT_ID</key>
+	<string>YOUR_PROJECT_ID</string>
+	<key>STORAGE_BUCKET</key>
+	<string>YOUR_PROJECT.appspot.com</string>
+	<key>GOOGLE_APP_ID</key>
+	<string>YOUR_GOOGLE_APP_ID</string>
+</dict>
+</plist>
