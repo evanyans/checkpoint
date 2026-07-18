@@ -119,14 +119,9 @@ struct ContentView: View {
 
             Spacer()
 
-            Button {
+            HoldToTriggerButton(title: "Trigger Emergency (Hold)") {
                 triggerEmergency()
-            } label: {
-                Text("Trigger Emergency")
-                    .primaryActionLabel()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.accentColor)
         }
         .padding()
         .squarishButtons()
@@ -239,6 +234,77 @@ struct ContentView: View {
         guard UserDefaults.standard.bool(forKey: key) else { return }
         UserDefaults.standard.set(false, forKey: key)
         triggerEmergency()
+    }
+}
+
+/// A capsule-shaped action button that only fires after a sustained hold.
+/// A darker fill sweeps left-to-right during the hold so the user sees how
+/// close they are to triggering; releasing early cancels cleanly.
+private struct HoldToTriggerButton: View {
+    let title: String
+    let onTrigger: () -> Void
+
+    private let holdDuration: TimeInterval = 3
+
+    @State private var progress: CGFloat = 0
+    @State private var isPressing = false
+    @State private var pendingTrigger: DispatchWorkItem?
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.accentColor)
+
+                Rectangle()
+                    .fill(Color.accentColor)
+                    .brightness(-0.15)
+                    .frame(width: geo.size.width * progress)
+
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .clipShape(Capsule())
+        }
+        .frame(minHeight: 50)
+        .contentShape(Capsule())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    guard !isPressing else { return }
+                    isPressing = true
+                    startHold()
+                }
+                .onEnded { _ in
+                    isPressing = false
+                    cancelHold()
+                }
+        )
+    }
+
+    private func startHold() {
+        pendingTrigger?.cancel()
+        // Snap progress to 0 without animation in case a previous cancel
+        // animation is still winding down, then sweep to full over holdDuration.
+        var reset = Transaction()
+        reset.disablesAnimations = true
+        withTransaction(reset) { progress = 0 }
+
+        withAnimation(.linear(duration: holdDuration)) { progress = 1 }
+
+        let task = DispatchWorkItem {
+            onTrigger()
+            progress = 0
+        }
+        pendingTrigger = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + holdDuration, execute: task)
+    }
+
+    private func cancelHold() {
+        pendingTrigger?.cancel()
+        pendingTrigger = nil
+        withAnimation(.easeOut(duration: 0.2)) { progress = 0 }
     }
 }
 
