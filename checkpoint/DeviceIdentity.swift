@@ -1,6 +1,8 @@
 //
 //  DeviceIdentity.swift
-//  pizza
+//  checkpoint
+//
+//  Created by Evan Yan on 2026-07-17.
 //
 //  Lightweight per-device identity so the log can show who triggered each
 //  incident. Defaults to the device name; overridable via the "friendName" key

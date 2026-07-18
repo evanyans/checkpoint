@@ -7,9 +7,14 @@
 
 import SwiftUI
 import SwiftData
+import FirebaseCore
 
 @main
 struct checkpointApp: App {
+    init() {
+        FirebaseApp.configure()
+    }
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,

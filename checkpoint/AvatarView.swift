@@ -1,6 +1,8 @@
 //
 //  AvatarView.swift
-//  pizza
+//  checkpoint
+//
+//  Created by Evan Yan on 2026-07-17.
 //
 
 import SwiftUI
