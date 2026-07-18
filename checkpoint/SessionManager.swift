@@ -83,7 +83,8 @@ final class SessionManager: ObservableObject {
     private var viewedSessionListener: ListenerRegistration?
 
     func createSession(channelName: String, ownerId: String, notifyIds: [String],
-                       escalationPhone: String? = nil, escalationDelayMinutes: Int? = nil) {
+                       escalationPhone: String? = nil, escalationDelayMinutes: Int? = nil,
+                       disguiseNotifications: Bool = false) {
         let ref = db.collection("sessions").document()
         createdSessionId = ref.documentID
         var data: [String: Any] = [
@@ -93,6 +94,8 @@ final class SessionManager: ObservableObject {
             "ownerId": ownerId,
             "notifyIds": notifyIds,
             "captureCount": 0,
+            // When true, responder pushes back to me are disguised (see Cloud Function).
+            "disguiseNotifications": disguiseNotifications,
             "createdAt": FieldValue.serverTimestamp(),
         ]
         // If auto-escalation is configured, the backend agent reads these to place
@@ -106,6 +109,14 @@ final class SessionManager: ObservableObject {
 
     func resolveSession(_ id: String) {
         db.collection("sessions").document(id).updateData(["status": "resolved"])
+    }
+
+    /// Toggle whether responder pushes back to the victim are disguised. Called live
+    /// when the victim hides their screen (bystander likely present) or reveals it.
+    func setDisguise(sessionId: String, on: Bool) {
+        db.collection("sessions").document(sessionId).updateData([
+            "disguiseNotifications": on
+        ])
     }
 
     /// Signals the backend to place the escalation call now (the victim didn't

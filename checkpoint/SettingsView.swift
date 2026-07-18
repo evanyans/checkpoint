@@ -22,6 +22,7 @@ struct SettingsView: View {
     @AppStorage("autoCallNumber") private var autoCallNumber = ""
     @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
     @AppStorage(DiscreetMode.storageKey) private var discreetModeRaw = DiscreetMode.lockScreen.rawValue
+    @AppStorage("disguiseAlerts") private var disguiseAlerts = true
 
     var body: some View {
         NavigationStack {
@@ -107,6 +108,12 @@ struct SettingsView: View {
                     Text("Discreet mode")
                 } footer: {
                     Text("What your screen shows when you tap Hide Screen during an emergency. Triple-tap anywhere to return to the livestream.")
+                }
+
+                Section {
+                    Toggle("Disguise lock-screen alerts", isOn: $disguiseAlerts)
+                } footer: {
+                    Text("When a friend responds (coming, called 911, watching), the alert on your lock screen is disguised as an ordinary Duolingo streak reminder so a bystander can't tell you've triggered an emergency. Hiding your screen always disguises alerts, whatever this is set to.")
                 }
 
                 Section {

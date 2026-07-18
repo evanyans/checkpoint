@@ -35,6 +35,7 @@ struct ContentView: View {
 
     @AppStorage("autoCallNumber") private var autoCallNumber = ""
     @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
+    @AppStorage("disguiseAlerts") private var disguiseAlerts = true
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -74,8 +75,14 @@ struct ContentView: View {
                       let id = sessionManager.activeSession?.id else { return }
                 sessionManager.updateLocation(sessionId: id, coordinate: location.coordinate)
             }
-            .onChange(of: sessionManager.activeSession?.response) { _, newValue in
-                guard role == .broadcaster, let newValue, let response = FriendResponse(rawValue: newValue) else { return }
+            .onChange(of: sessionManager.notifications.first?.id) { _, newId in
+                // Buzz the victim's phone every time a friend responds. Driving this
+                // off the append-only notification log (not the single `response`
+                // field) means every tap buzzes — even repeats or two friends picking
+                // the same action. Distinct pulse counts let the victim decode who's
+                // helping without looking: 1 = watching, 2 = coming, 3 = called 911.
+                guard role == .broadcaster, newId != nil,
+                      let response = sessionManager.notifications.first?.response else { return }
                 hapticManager.play(response)
             }
             .onChange(of: sessionManager.viewedSessionEnded) { _, ended in
@@ -98,7 +105,10 @@ struct ContentView: View {
                         stream: stream,
                         sessionManager: sessionManager,
                         escalation: escalation,
-                        onEnd: endSession
+                        // Viewer's ✕ must run the viewer cleanup (removeViewer, stop
+                        // listeners) — not the broadcaster's endSession — otherwise the
+                        // viewer's id lingers in viewerIds and the count never drops.
+                        onEnd: { role == .viewer ? resetViewer() : endSession() }
                     )
                 case .none:
                     EmptyView()
@@ -209,7 +219,8 @@ struct ContentView: View {
             ownerId: userManager.userId,
             notifyIds: userManager.friendIds,
             escalationPhone: autoCallNumber,
-            escalationDelayMinutes: autoCallDelayMinutes
+            escalationDelayMinutes: autoCallDelayMinutes,
+            disguiseNotifications: disguiseAlerts
         )
         locationManager.requestPermission()
         locationManager.startUpdating()
@@ -221,14 +232,14 @@ struct ContentView: View {
         }
         stream.setFrameDelegate(faceCapture)
 
-        // Arm the on-screen auto-escalation countdown when an auto-call number is set.
-        if !autoCallNumber.isEmpty {
-            escalation.onEscalate = {
-                guard let id = sessionManager.createdSessionId else { return }
-                sessionManager.requestEscalation(sessionId: id)
-            }
-            escalation.start(delayMinutes: autoCallDelayMinutes)
+        // Always arm the on-screen auto-escalation countdown + safety check. Placing
+        // the actual call is gated server-side on an auto-call number being set, so
+        // the countdown/"are you safe?" prompt shows even without a number configured.
+        escalation.onEscalate = {
+            guard let id = sessionManager.createdSessionId else { return }
+            sessionManager.requestEscalation(sessionId: id)
         }
+        escalation.start(delayMinutes: autoCallDelayMinutes)
 
         // Heavy Agora join runs off the main thread so it never blocks the UI.
         DispatchQueue.global(qos: .userInitiated).async {

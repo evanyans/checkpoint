@@ -27,6 +27,8 @@ struct EmergencyView: View {
     @State private var showMapOptions = false
     @State private var discreetActive = false
 
+    @AppStorage("disguiseAlerts") private var disguiseAlerts = true
+
     var body: some View {
         Group {
             switch role {
@@ -38,6 +40,13 @@ struct EmergencyView: View {
             EtaSheet(minutes: $etaMinutes) { eta in
                 respond(.coming, eta: eta)
             }
+        }
+        .onChange(of: discreetActive) { _, hidden in
+            // A hidden screen means someone may be looking, so force-disguise
+            // incoming responder pushes; revert to the user's setting when revealed.
+            guard role == .broadcaster,
+                  let id = sessionManager.activeSession?.id ?? sessionManager.createdSessionId else { return }
+            sessionManager.setDisguise(sessionId: id, on: hidden || disguiseAlerts)
         }
         .directionsChooser(isPresented: $showMapOptions, coordinate: sessionManager.activeSession?.coordinate)
     }
@@ -71,6 +80,8 @@ struct EmergencyView: View {
                 }
 
                 NotificationLogView(entries: sessionManager.notifications)
+
+                buzzLegend
 
                 Button {
                     discreetActive = true
@@ -129,6 +140,16 @@ struct EmergencyView: View {
 
     private func timeString(_ seconds: Int) -> String {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    /// Explains the covert vibration code so the victim can decode buzzes even with
+    /// the screen hidden — the pulse count matches HapticManager.play().
+    private var buzzLegend: some View {
+        Label("Phone buzzes — 1: watching · 2: coming · 3: 911 called",
+              systemImage: "iphone.radiowaves.left.and.right")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var viewerCount: Int { sessionManager.activeSession?.viewerIds.count ?? 0 }

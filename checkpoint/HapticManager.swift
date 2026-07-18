@@ -8,6 +8,7 @@
 import Foundation
 import CoreHaptics
 import AudioToolbox
+import AVFoundation
 
 enum FriendResponse: String {
     case watching
@@ -83,9 +84,15 @@ final class HapticManager {
         }
         print("HapticManager: play(\(response.rawValue)) -> \(taps) tap(s)")
 
-        // Core Haptics is silently muted while Agora records mic audio on the
-        // broadcaster, so use the classic vibration motor, which cuts through an
-        // active recording/call session (same path as notification buzzes).
+        // While the victim is broadcasting, Agora holds the audio session in
+        // .playAndRecord — and iOS suppresses ALL vibration/haptics during recording
+        // by design, so the buzz silently never fires on device. Opt back in first;
+        // Agora reconfigures the session dynamically, so we re-apply on every buzz.
+        // https://developer.apple.com/documentation/avfaudio/avaudiosession/setallowhapticsandsystemsoundsduringrecording(_:)
+        try? AVAudioSession.sharedInstance().setAllowHapticsAndSystemSoundsDuringRecording(true)
+
+        // Classic vibration motor via AudioServices — the most noticeable buzz for a
+        // victim who may only feel (not see) the phone. Now permitted by the flag above.
         playFallback(taps: taps)
     }
 

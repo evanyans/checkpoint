@@ -110,6 +110,104 @@ exports.notifyFriendsOnEmergency = onDocumentCreated("sessions/{sessionId}", asy
   });
 });
 
+//
+//  Responder fan-back: when a friend taps "Coming" / "911" / "Watching", a doc
+//  lands in the session's `notifications` subcollection. Push that action back to
+//  the victim (session owner) so it reaches their lock screen even if the app is
+//  closed. If the victim has discreet alerts enabled (or has actively hidden their
+//  screen), the visible text is disguised as an innocuous Duolingo notification —
+//  the real meaning rides in the (never-displayed) data payload so the app can
+//  still route/haptic correctly when opened.
+//
+exports.notifyOwnerOnResponse = onDocumentCreated(
+  "sessions/{sessionId}/notifications/{notifId}",
+  async (event) => {
+    const note = event.data?.data();
+    if (!note) return;
+    const action = note.action;
+    if (!action) return;
+
+    const sessionId = event.params.sessionId;
+    const sessionSnap = await db.collection("sessions").doc(sessionId).get();
+    const session = sessionSnap.data();
+    if (!session) return;
+
+    const ownerId = session.ownerId;
+    if (!ownerId) return;
+
+    const ownerSnap = await db.collection("users").doc(ownerId).get();
+    const token = ownerSnap.get("fcmToken");
+    if (typeof token !== "string" || token.length === 0) {
+      logger.info("Response received but owner has no push token", { sessionId, action });
+      return;
+    }
+
+    const disguise = session.disguiseNotifications === true;
+    const eta = typeof note.etaMinutes === "number" ? note.etaMinutes : null;
+    const visible = disguise
+      ? disguisedMessage(action, eta)
+      : realMessage(action, note.actor, eta);
+
+    const res = await getMessaging().send({
+      token,
+      notification: { title: visible.title, body: visible.body },
+      apns: { payload: { aps: { sound: "default" } } },
+      // Real values live here (not shown on the lock screen) so the app can route
+      // and react correctly regardless of the disguised visible text.
+      data: {
+        sessionId,
+        action: String(action),
+        actor: String(note.actor || ""),
+        eta: eta != null ? String(eta) : "",
+        disguised: disguise ? "1" : "0",
+      },
+    });
+
+    logger.info("Responder push to owner", { sessionId, action, disguise, messageId: res });
+  }
+);
+
+// Real, plain-language alert for the victim's lock screen.
+function realMessage(action, actor, eta) {
+  const who = actor && String(actor).trim() ? String(actor).trim() : "A friend";
+  switch (action) {
+    case "coming":
+      return {
+        title: "Help is on the way",
+        body: eta ? `${who} is coming to you (~${eta} min).` : `${who} is coming to you.`,
+      };
+    case "called911":
+      return { title: "911 has been called", body: `${who} called 911 for you.` };
+    case "watching":
+      return { title: "A friend is watching", body: `${who} is watching your stream.` };
+    default:
+      return { title: "Checkpoint", body: `${who} responded to your alert.` };
+  }
+}
+
+// Duolingo-themed cover text. Looks like an ordinary streak reminder to a bystander
+// glancing at the lock screen, while the victim (who knows the scheme) understands:
+//   coming    → a friend is en route
+//   called911 → 911 dispatched
+//   watching  → a friend is now watching the stream
+function disguisedMessage(action, eta) {
+  switch (action) {
+    case "coming":
+      return {
+        title: "Duolingo",
+        body: eta
+          ? `🔥 Your friend is joining your streak in ${eta} min — hang tight!`
+          : "🔥 Your friend is joining your streak — hang tight!",
+      };
+    case "called911":
+      return { title: "Duolingo", body: "🦉 Lesson complete! Your reward is on its way." };
+    case "watching":
+      return { title: "Duolingo", body: "👀 A friend is cheering you on in today's lesson!" };
+    default:
+      return { title: "Duolingo", body: "🔥 Don't lose your streak — keep it going!" };
+  }
+}
+
 async function placeCall(sessionId, s) {
   const ref = db.collection("sessions").doc(sessionId);
 
