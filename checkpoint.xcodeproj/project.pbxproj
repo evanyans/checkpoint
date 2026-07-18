@@ -11,6 +11,7 @@
 		E2B07FD5300B200E00DED108 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FD4300B200E00DED108 /* FirebaseFirestore */; };
 		E2B07FE8300B266100DED108 /* RtcBasic in Frameworks */ = {isa = PBXBuildFile; productRef = E2B07FE7300B266100DED108 /* RtcBasic */; };
 		E2B0803A300B2DC300DED108 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = E2B08039300B2DC300DED108 /* FirebaseStorage */; };
+		E2B0806A300B2DC300DED108 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = E2B08069300B2DC300DED108 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +63,7 @@
 				E2B07FD3300B1FF900DED108 /* FirebaseCore in Frameworks */,
 				E2B0803A300B2DC300DED108 /* FirebaseStorage in Frameworks */,
 				E2B07FD5300B200E00DED108 /* FirebaseFirestore in Frameworks */,
+				E2B0806A300B2DC300DED108 /* FirebaseMessaging in Frameworks */,
 				E2B07FE8300B266100DED108 /* RtcBasic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -135,6 +137,7 @@
 				E2B07FD4300B200E00DED108 /* FirebaseFirestore */,
 				E2B07FE7300B266100DED108 /* RtcBasic */,
 				E2B08039300B2DC300DED108 /* FirebaseStorage */,
+				E2B08069300B2DC300DED108 /* FirebaseMessaging */,
 			);
 			productName = checkpoint;
 			productReference = E2B07F8E300B165600DED108 /* checkpoint.app */;
@@ -422,6 +425,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = checkpoint/checkpoint.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NSL86F37B9;
@@ -433,6 +437,7 @@
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "checkpoint lets you set a profile photo from your library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -458,6 +463,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = checkpoint/checkpoint.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NSL86F37B9;
@@ -469,6 +475,7 @@
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "checkpoint lets you set a profile photo from your library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -653,6 +660,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E2B07FD0300B1FA500DED108 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		E2B08069300B2DC300DED108 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E2B07FD0300B1FA500DED108 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
