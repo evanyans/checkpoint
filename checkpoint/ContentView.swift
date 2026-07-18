@@ -26,8 +26,9 @@ struct ContentView: View {
     @State private var cover: CoverKind?
 
     // Whole-screen hold-to-trigger state: press anywhere to start the countdown,
-    // release before it completes to cancel.
-    @State private var holdProgress: CGFloat = 0
+    // release before it completes to cancel. Progress is derived from wall-clock
+    // elapsed time so the bar advances smoothly across the full duration.
+    @State private var holdStartedAt: Date?
     @State private var isPressingHold = false
     @State private var pendingTrigger: DispatchWorkItem?
     private let holdDuration: TimeInterval = 3
@@ -123,12 +124,15 @@ struct ContentView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(.systemGray5))
-                        Capsule()
-                            .fill(Color(.systemGray))
-                            .frame(width: geo.size.width * holdProgress)
+                TimelineView(.animation(paused: holdStartedAt == nil)) { context in
+                    let progress = holdProgress(at: context.date)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color(.systemGray5))
+                            Capsule()
+                                .fill(Color(.systemGray))
+                                .frame(width: geo.size.width * progress)
+                        }
                     }
                 }
                 .frame(height: 8)
@@ -159,19 +163,19 @@ struct ContentView: View {
 
     // MARK: - Hold gesture
 
+    private func holdProgress(at date: Date) -> CGFloat {
+        guard let start = holdStartedAt else { return 0 }
+        let elapsed = date.timeIntervalSince(start)
+        return CGFloat(min(max(elapsed / holdDuration, 0), 1))
+    }
+
     private func startHold() {
         pendingTrigger?.cancel()
-        // Snap progress to 0 without animation in case a previous cancel
-        // is still winding down, then sweep to full over holdDuration.
-        var reset = Transaction()
-        reset.disablesAnimations = true
-        withTransaction(reset) { holdProgress = 0 }
-
-        withAnimation(.linear(duration: holdDuration)) { holdProgress = 1 }
+        holdStartedAt = Date()
 
         let task = DispatchWorkItem {
             triggerEmergency()
-            holdProgress = 0
+            holdStartedAt = nil
         }
         pendingTrigger = task
         DispatchQueue.main.asyncAfter(deadline: .now() + holdDuration, execute: task)
@@ -180,7 +184,7 @@ struct ContentView: View {
     private func cancelHold() {
         pendingTrigger?.cancel()
         pendingTrigger = nil
-        withAnimation(.easeOut(duration: 0.2)) { holdProgress = 0 }
+        holdStartedAt = nil
     }
 
     // MARK: - Cover binding
