@@ -11,10 +11,11 @@
 //
 
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 
 initializeApp();
@@ -33,6 +34,9 @@ const OUTBOUND_CALL_URL = "https://api.elevenlabs.io/v1/convai/twilio/outbound-c
 const GEMINI_MODEL = "gemini-flash-latest";
 // Don't re-run Gemini on every rapid auto-capture; refresh at most this often.
 const ANALYSIS_THROTTLE_MS = 15000;
+// How many times to call Gemini before marking a run failed. The scheduled
+// reconciler retries beyond this on its own cadence while the emergency is live.
+const ANALYSIS_ATTEMPTS = 3;
 
 // The victim's on-screen countdown drives escalation now: when their confirmation
 // window expires without an "I'm safe" tap, the app sets `escalate: true` on the
@@ -341,18 +345,19 @@ async function placeCall(sessionId, s) {
 // AI evidence analysis: describe the suspect from auto-captured stills (Gemini)
 // ---------------------------------------------------------------------------
 
-const SUSPECT_PROMPT = `You are an evidence-analysis assistant for a personal-safety app. The attached JPEG stills were auto-captured by a victim's phone during an ACTIVE emergency. Another person in frame may be an aggressor. Produce a factual, observational description to help responders recognize that person.
+const SUSPECT_PROMPT = `You are an evidence-analysis assistant for a personal-safety app. The attached JPEG stills were auto-captured by a victim's phone during an ACTIVE emergency. Any person in frame may be the aggressor. Produce a factual, observational description to help responders recognize that person.
 
 Strict rules:
 - Describe ONLY what is clearly visible in the images.
 - If an attribute is not visible or you are unsure, use null — do not guess.
 - You may note plainly visible physical appearance (approximate skin tone, hair, build, clothing). Do NOT guess ethnicity, nationality, name, or identity.
 - Never invent details. It is better to say null than to be wrong.
-- If the only person visible appears to be the phone's owner (a single selfie-style face) or no other person is present, set "present" to false.
+- Describe ANY person visible in the frames as the potential subject. Do NOT exclude anyone — do not assume a face is the phone's owner and do not skip selfie-style or close-up faces. If more than one person is visible, describe the one most likely to be an aggressor and mention the others in "caveats".
+- Set "present" to true if ANY person is visible. Set "present" to false ONLY when no person appears in any frame at all.
 
 Return ONLY a JSON object with exactly this shape:
 {
-  "present": boolean,
+  "present": boolean,                   // true if any person is visible; false only if no person at all
   "summary": string,                    // 1-2 sentences a dispatcher could read aloud
   "sex": string|null,                   // apparent, e.g. "male-presenting"
   "ageRange": string|null,              // e.g. "20s-30s"
@@ -367,46 +372,112 @@ Return ONLY a JSON object with exactly this shape:
   "caveats": string|null                // what limits the description (blur, lighting, angle)
 }`;
 
+// A newly-captured still triggers analysis (throttled so rapid captures don't
+// hammer Gemini). The heavy lifting + retries live in runSuspectAnalysis, which
+// the scheduled reconciler below also calls to self-heal stuck sessions.
 exports.analyzeSuspectFromCaptures = onDocumentCreated(
   {
     document: "sessions/{sessionId}/captures/{captureId}",
     secrets: [GEMINI_API_KEY],
   },
   async (event) => {
-    const sessionId = event.params.sessionId;
-    const sessionRef = db.collection("sessions").doc(sessionId);
-    const sessionSnap = await sessionRef.get();
-    if (!sessionSnap.exists) return;
+    await runSuspectAnalysis(db.collection("sessions").doc(event.params.sessionId));
+  }
+);
 
+// Self-healing sweep: Gemini is occasionally flaky (overload, a blocked/empty
+// candidate, or malformed JSON), and the per-capture trigger only re-fires when a
+// NEW still lands — so a session can end up with plenty of photos but no
+// description. Once a minute, re-run analysis for any recent session that has
+// captures but hasn't produced one yet. Analysis is decoupled from the live video
+// (it runs off captures already saved in Firestore), so we look back over a window
+// covering live AND just-ended sessions — ending the stream early doesn't stop the
+// description from being generated in the background. Bypasses the throttle.
+exports.retrySuspectAnalyses = onSchedule(
+  { schedule: "every 1 minutes", secrets: [GEMINI_API_KEY] },
+  async () => {
+    const cutoff = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
+    const snap = await db.collection("sessions").where("createdAt", ">=", cutoff).get();
+    for (const doc of snap.docs) {
+      const s = doc.data();
+      // Already have a usable description, or Gemini already ran and found no other
+      // person in frame (present:false is a real conclusion, not a failure).
+      if (s.analysis?.present === true) continue;
+      if (s.analysisStatus === "done") continue;
+      // Don't stomp a run that's genuinely in flight (started < 45s ago).
+      const updatedMs = s.analysisUpdatedAt?.toMillis?.() ?? 0;
+      if (s.analysisStatus === "analyzing" && Date.now() - updatedMs < 45000) continue;
+      // Only worth retrying if there are actually photos to analyze.
+      const caps = await doc.ref.collection("captures").limit(1).get();
+      if (caps.empty) continue;
+      logger.info("Reconciler retrying suspect analysis", { sessionId: doc.id, status: s.analysisStatus });
+      await runSuspectAnalysis(doc.ref, { bypassThrottle: true });
+    }
+  }
+);
+
+// Runs suspect analysis on a session's most recent captures, retrying transient
+// Gemini failures with backoff before giving up. Returns a short status string.
+async function runSuspectAnalysis(sessionRef, { bypassThrottle = false } = {}) {
+  const sessionId = sessionRef.id;
+  const sessionSnap = await sessionRef.get();
+  if (!sessionSnap.exists) return "no-session";
+
+  if (!bypassThrottle) {
     // Throttle: auto-capture can fire rapidly; don't call Gemini on every frame.
     const lastMs = sessionSnap.get("analysisUpdatedAt")?.toMillis?.() ?? 0;
-    if (Date.now() - lastMs < ANALYSIS_THROTTLE_MS) return;
+    if (Date.now() - lastMs < ANALYSIS_THROTTLE_MS) return "throttled";
+  }
 
-    // Analyze the most recent few stills together for the best composite description.
-    const capsSnap = await sessionRef
-      .collection("captures")
-      .orderBy("createdAt", "desc")
-      .limit(4)
-      .get();
+  // Analyze the most recent few stills together for the best composite description.
+  const capsSnap = await sessionRef
+    .collection("captures")
+    .orderBy("createdAt", "desc")
+    .limit(4)
+    .get();
 
-    const parts = [{ text: SUSPECT_PROMPT }];
-    capsSnap.forEach((d) => {
-      const b64 = d.get("image");
-      if (b64) parts.push({ inline_data: { mime_type: "image/jpeg", data: b64 } });
-    });
-    if (parts.length === 1) return; // no usable images
+  const parts = [{ text: SUSPECT_PROMPT }];
+  capsSnap.forEach((d) => {
+    const b64 = d.get("image");
+    if (b64) parts.push({ inline_data: { mime_type: "image/jpeg", data: b64 } });
+  });
+  if (parts.length === 1) return "no-images";
 
-    // Publish an "analyzing" status so the app can show a live spinner. We also
-    // bump analysisUpdatedAt here so the throttle covers this in-flight run.
+  // Publish an "analyzing" status so the app can show a live spinner. Bump
+  // analysisUpdatedAt so the per-capture throttle covers this in-flight run.
+  await sessionRef.update({
+    analysisStatus: "analyzing",
+    analysisUpdatedAt: FieldValue.serverTimestamp(),
+  });
+
+  const { parsed, error } = await callGeminiSuspect(parts, sessionId);
+  if (!parsed) {
+    logger.error("Gemini analysis failed after retries", { sessionId, error });
     await sessionRef.update({
-      analysisStatus: "analyzing",
+      analysisStatus: "failed",
+      analysisError: String(error).slice(0, 300),
+      // Bump so rapid captures stay throttled; the reconciler retries regardless.
       analysisUpdatedAt: FieldValue.serverTimestamp(),
     });
+    return "failed";
+  }
 
-    const fail = async (reason) => {
-      await sessionRef.update({ analysisStatus: "failed", analysisError: String(reason).slice(0, 300) });
-    };
+  await sessionRef.update({
+    analysis: { ...parsed, model: GEMINI_MODEL, capturesAnalyzed: parts.length - 1 },
+    analysisStatus: "done",
+    analysisError: FieldValue.delete(),
+    analysisUpdatedAt: FieldValue.serverTimestamp(),
+  });
+  logger.info("Suspect analysis updated", { sessionId, present: parsed.present });
+  return "done";
+}
 
+// Calls Gemini and returns { parsed } on success or { error } after exhausting
+// retries. Retries every failure mode we've seen it flake on — bad HTTP (429/5xx
+// overload), an empty/blocked candidate, or unparseable JSON — with short backoff.
+async function callGeminiSuspect(parts, sessionId) {
+  let lastError = "unknown error";
+  for (let attempt = 1; attempt <= ANALYSIS_ATTEMPTS; attempt++) {
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY.value()}`,
@@ -419,42 +490,31 @@ exports.analyzeSuspectFromCaptures = onDocumentCreated(
           }),
         }
       );
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const msg = json?.error?.message || `HTTP ${res.status}`;
-        logger.error(`Gemini analysis failed (${res.status}): ${msg}`, { sessionId, json });
-        await fail(`${res.status}: ${msg}`);
-        return;
+        lastError = `${res.status}: ${json?.error?.message || "HTTP error"}`;
+      } else {
+        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          lastError = `blocked or empty (${json.candidates?.[0]?.finishReason || "no content"})`;
+        } else {
+          const parsed = parseGeminiJson(text);
+          if (parsed) return { parsed };
+          lastError = "could not parse model response";
+        }
       }
-
-      const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        const reason = json.candidates?.[0]?.finishReason || "no content returned";
-        logger.warn("Gemini returned no text", { sessionId, reason, promptFeedback: json.promptFeedback });
-        await fail(`blocked or empty (${reason})`);
-        return;
-      }
-
-      const parsed = parseGeminiJson(text);
-      if (!parsed) {
-        logger.error("Gemini JSON parse failed", { sessionId, text: text.slice(0, 800) });
-        await fail("could not parse model response");
-        return;
-      }
-
-      await sessionRef.update({
-        analysis: { ...parsed, model: GEMINI_MODEL, capturesAnalyzed: parts.length - 1 },
-        analysisStatus: "done",
-        analysisError: FieldValue.delete(),
-        analysisUpdatedAt: FieldValue.serverTimestamp(),
-      });
-      logger.info("Suspect analysis updated", { sessionId, present: parsed.present });
     } catch (err) {
-      logger.error("Gemini analysis error", { sessionId, err: String(err) });
-      await fail(err);
+      lastError = String(err);
+    }
+
+    logger.warn(`Gemini attempt ${attempt}/${ANALYSIS_ATTEMPTS} failed`, { sessionId, lastError });
+    if (attempt < ANALYSIS_ATTEMPTS) {
+      await new Promise((r) => setTimeout(r, 600 * attempt)); // 0.6s, 1.2s backoff
     }
   }
-);
+  return { error: lastError };
+}
 
 // Gemini sometimes wraps JSON in ```json fences or adds stray prose even when
 // asked for raw JSON. Strip fences, then fall back to the first {...} block.

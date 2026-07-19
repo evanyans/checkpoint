@@ -38,7 +38,8 @@
       "Bash(cp /Users/evanyan/Downloads/logo.jpeg /tmp/ck_logo_src.jpeg)",
       "Bash(sips --padToHeightWidth 1796 1796 --padColor FFFFFF /tmp/ck_logo_src.jpeg --out /tmp/ck_logo_sq.png)",
       "Bash(sips -z 1024 1024 /tmp/ck_logo_sq.png --out AppIcon.png)",
-      "Bash(sips -g pixelWidth -g pixelHeight -g hasAlpha AppIcon.png)"
+      "Bash(sips -g pixelWidth -g pixelHeight -g hasAlpha AppIcon.png)",
+      "Bash(node -e \"const s=require\\('firebase-functions/v2/scheduler'\\); console.log\\('onSchedule:', typeof s.onSchedule\\)\")"
     ]
   }
 }
