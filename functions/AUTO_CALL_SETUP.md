@@ -61,7 +61,10 @@ Twilio is just the "dumb pipe" that carries the call; ElevenLabs does the talkin
    2. Give the last known location: {{location}}. If asked, a map link is {{maps_link}}.
    3. Urge them to try to reach {{user_name}} right now, and to call 911 (or local
       emergency services) if they cannot confirm {{user_name}} is safe.
-   4. Answer questions using ONLY the information above. If you don't know, say so.
+   4. If asked who might be involved, share the AI description of the person seen in
+      the footage: {{suspect_description}}. Present it as an unconfirmed lead from
+      automated analysis, not a certain identification.
+   5. Answer questions using ONLY the information above. If you don't know, say so.
 
    Be brief, serious, and calm. Do not hang up until they clearly acknowledge. If you
    reach voicemail, leave the same core message.
@@ -79,7 +82,7 @@ Twilio is just the "dumb pipe" that carries the call; ElevenLabs does the talkin
 5. **Register the dynamic variables** so the agent accepts them. In the agent's settings
    find **Dynamic variables** (under Security/Advanced depending on UI) and add, with any
    placeholder defaults:
-   `user_name`, `minutes`, `location`, `maps_link`
+   `user_name`, `minutes`, `location`, `maps_link`, `suspect_description`
 6. **Save**, then copy the **Agent ID** (in the agent's URL or its settings header).
 
 ### 2b. Connect your Twilio number to ElevenLabs

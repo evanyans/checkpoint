@@ -85,7 +85,9 @@ final class SessionManager: ObservableObject {
     func createSession(channelName: String, ownerId: String,
                        p1NotifyIds: [String], p2NotifyIds: [String],
                        escalationPhone: String? = nil, escalationDelayMinutes: Int? = nil,
-                       disguiseNotifications: Bool = false) {
+                       disguiseNotifications: Bool = false,
+                       victimDescription: String? = nil, medicalNotes: String? = nil,
+                       incidentTime: String? = nil) {
         let ref = db.collection("sessions").document()
         createdSessionId = ref.documentID
         // Union goes in notifyIds so the existing in-app listener (which shows
@@ -111,6 +113,10 @@ final class SessionManager: ObservableObject {
             data["escalationPhone"] = escalationPhone
             data["escalationDelayMinutes"] = escalationDelayMinutes
         }
+        // Victim context the escalation-call agent reads out (see placeCall).
+        if let victimDescription, !victimDescription.isEmpty { data["victimDescription"] = victimDescription }
+        if let medicalNotes, !medicalNotes.isEmpty { data["medicalNotes"] = medicalNotes }
+        if let incidentTime, !incidentTime.isEmpty { data["incidentTime"] = incidentTime }
         ref.setData(data)
     }
 
@@ -162,6 +168,14 @@ final class SessionManager: ObservableObject {
         db.collection("sessions").document(sessionId).updateData([
             "latitude": coordinate.latitude,
             "longitude": coordinate.longitude,
+        ])
+    }
+
+    /// Reverse-geocoded street address; the escalation call speaks this instead of
+    /// raw coordinates. Written separately since geocoding resolves asynchronously.
+    func updateLocationAddress(sessionId: String, address: String) {
+        db.collection("sessions").document(sessionId).updateData([
+            "locationAddress": address
         ])
     }
 

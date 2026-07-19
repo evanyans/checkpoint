@@ -40,8 +40,8 @@ final class EscalationController: ObservableObject {
     /// Called when the confirmation window expires without a dismiss — go call.
     var onEscalate: (() -> Void)?
 
-    func start(delayMinutes: Int) {
-        delay = TimeInterval(max(1, delayMinutes) * 60)
+    func start(delaySeconds: Int) {
+        delay = TimeInterval(max(1, delaySeconds))
         didEscalate = false
         arm()
     }

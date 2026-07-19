@@ -21,8 +21,42 @@ struct SettingsView: View {
 
     @AppStorage("autoCallNumber") private var autoCallNumber = ""
     @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
+    @AppStorage("autoCallDelaySeconds") private var autoCallDelaySeconds = 0
     @AppStorage(DiscreetMode.storageKey) private var discreetModeRaw = DiscreetMode.lockScreen.rawValue
     @AppStorage("disguiseAlerts") private var disguiseAlerts = true
+
+    /// Clock-style duration picker: two wheels (minutes + seconds) side by side,
+    /// each row carries its own unit like the iOS Timer.
+    private var autoCallDelayPicker: some View {
+        HStack(spacing: 0) {
+            delayWheel(selection: $autoCallDelayMinutes,
+                       values: Array(0...60), unit: "min")
+            delayWheel(selection: $autoCallDelaySeconds,
+                       values: Array(stride(from: 0, through: 55, by: 5)), unit: "sec")
+        }
+        .frame(height: 130)
+    }
+
+    private func delayWheel(selection: Binding<Int>, values: [Int], unit: String) -> some View {
+        Picker("", selection: selection) {
+            ForEach(values, id: \.self) { value in
+                Text("\(value) \(unit)").tag(value)
+            }
+        }
+        .pickerStyle(.wheel)
+        .frame(maxWidth: .infinity)
+        .clipped()
+    }
+
+    /// Human-readable total escalation delay, e.g. "5 minutes", "10 seconds",
+    /// "1 minute 30 seconds". Mirrors the ≥5s floor applied at trigger time.
+    private var delayDescription: String {
+        let total = max(5, autoCallDelayMinutes * 60 + autoCallDelaySeconds)
+        let m = total / 60, s = total % 60
+        let minPart = m > 0 ? "\(m) minute\(m == 1 ? "" : "s")" : ""
+        let secPart = s > 0 ? "\(s) second\(s == 1 ? "" : "s")" : ""
+        return [minPart, secPart].filter { !$0.isEmpty }.joined(separator: " ")
+    }
 
     var body: some View {
         NavigationStack {
@@ -124,18 +158,19 @@ struct SettingsView: View {
                             .keyboardType(.phonePad)
                             .multilineTextAlignment(.trailing)
                     }
-                    Stepper(value: $autoCallDelayMinutes, in: 1...60) {
+                    VStack(alignment: .leading, spacing: 2) {
                         HStack {
-                            Text("After")
+                            Text("Call after")
                             Spacer()
-                            Text("\(autoCallDelayMinutes) min")
+                            Text(delayDescription)
                                 .foregroundStyle(.secondary)
                         }
+                        autoCallDelayPicker
                     }
                 } header: {
                     Text("Automatic escalation call")
                 } footer: {
-                    Text("If an emergency stays active for \(autoCallDelayMinutes) minute\(autoCallDelayMinutes == 1 ? "" : "s"), an automated AI agent calls this number, tells them you may be in danger with your last known location, and can answer their questions. Leave blank to disable.")
+                    Text("If an emergency stays active for \(delayDescription), an automated AI agent calls this number, tells them you may be in danger with your last known location, and can answer their questions. Leave blank to disable. (Minimum 5 seconds — handy for demos.)")
                 }
 
                 Section("Your friends") {

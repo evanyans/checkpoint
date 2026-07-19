@@ -257,15 +257,31 @@ async function placeCall(sessionId, s) {
   if (!claimed) return;
 
   const hasLoc = typeof s.latitude === "number" && typeof s.longitude === "number";
-  const location = hasLoc
-    ? `latitude ${s.latitude.toFixed(4)}, longitude ${s.longitude.toFixed(4)}`
-    : "an unknown location";
+  // Prefer the reverse-geocoded street address; coordinates are a last resort since
+  // they're useless to speak on a call. The map link still carries exact coordinates.
+  const address = s.locationAddress && String(s.locationAddress).trim();
+  const location = address
+    ? address
+    : hasLoc
+      ? `approximately latitude ${s.latitude.toFixed(4)}, longitude ${s.longitude.toFixed(4)}`
+      : "an unknown location";
   const mapsLink = hasLoc ? `https://maps.google.com/?q=${s.latitude},${s.longitude}` : "";
 
   // Fold the AI evidence analysis into the call so the agent can describe the suspect.
   const suspect = s.analysis?.present && s.analysis?.summary
     ? s.analysis.summary
     : "no suspect has been identified in the footage yet";
+
+  // Victim context pulled from their My Profile (written onto the session at trigger).
+  const victim = s.victimDescription && String(s.victimDescription).trim()
+    ? s.victimDescription
+    : "no physical description on file";
+  const medical = s.medicalNotes && String(s.medicalNotes).trim()
+    ? s.medicalNotes
+    : "none on file";
+  const time = s.incidentTime && String(s.incidentTime).trim()
+    ? s.incidentTime
+    : "an unknown time";
 
   const body = {
     agent_id: ELEVENLABS_AGENT_ID.value(),
@@ -276,8 +292,11 @@ async function placeCall(sessionId, s) {
       dynamic_variables: {
         user_name: s.triggeredBy ?? "someone",
         minutes: String(s.escalationDelayMinutes ?? 5),
+        time,
         location,
         maps_link: mapsLink,
+        victim_description: victim,
+        medical_notes: medical,
         suspect_description: suspect,
       },
     },

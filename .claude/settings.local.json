@@ -29,7 +29,9 @@
       "Bash(grep -rn *)",
       "Bash(node --check functions/index.js)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(firebase functions:secrets:access ELEVENLABS_AGENT_ID)",
+      "Bash(firebase login:list)"
     ]
   }
 }

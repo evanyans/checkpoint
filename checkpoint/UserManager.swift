@@ -58,6 +58,18 @@ struct UserProfile: Equatable {
             "emergencyContactPhone": emergencyContactPhone,
         ]
     }
+
+    /// One-line physical summary spoken by the escalation-call agent. Skips any
+    /// fields the user left blank so it never reads out empty labels.
+    var callSummary: String {
+        var parts: [String] = []
+        if !age.trimmingCharacters(in: .whitespaces).isEmpty { parts.append("age \(age)") }
+        if !height.trimmingCharacters(in: .whitespaces).isEmpty { parts.append(height) }
+        if !race.trimmingCharacters(in: .whitespaces).isEmpty { parts.append(race) }
+        if !physicalDescription.trimmingCharacters(in: .whitespaces).isEmpty { parts.append(physicalDescription) }
+        if !accessories.trimmingCharacters(in: .whitespaces).isEmpty { parts.append("wearing/carrying \(accessories)") }
+        return parts.joined(separator: ", ")
+    }
 }
 
 final class UserManager: ObservableObject {

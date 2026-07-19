@@ -41,6 +41,13 @@ struct ContentView: View {
 
     @AppStorage("autoCallNumber") private var autoCallNumber = ""
     @AppStorage("autoCallDelayMinutes") private var autoCallDelayMinutes = 5
+    @AppStorage("autoCallDelaySeconds") private var autoCallDelaySeconds = 0
+
+    /// Full escalation delay in seconds (minutes + seconds), floored at 5s so a
+    /// 0/0 setting can't fire instantly.
+    private var autoCallDelayTotalSeconds: Int {
+        max(5, autoCallDelayMinutes * 60 + autoCallDelaySeconds)
+    }
     @AppStorage("disguiseAlerts") private var disguiseAlerts = true
 
     @Environment(\.scenePhase) private var scenePhase
@@ -80,6 +87,14 @@ struct ContentView: View {
                       let location,
                       let id = sessionManager.activeSession?.id else { return }
                 sessionManager.updateLocation(sessionId: id, coordinate: location.coordinate)
+            }
+            .onReceive(locationManager.$readableAddress) { address in
+                // Reverse-geocoding resolves after the fix; write the readable address
+                // so the escalation call can speak a street, not coordinates.
+                guard role == .broadcaster,
+                      let address, !address.isEmpty,
+                      let id = sessionManager.activeSession?.id else { return }
+                sessionManager.updateLocationAddress(sessionId: id, address: address)
             }
             .onChange(of: sessionManager.notifications.first?.id) { _, newId in
                 // Buzz the victim's phone every time a friend responds. Driving this
@@ -233,8 +248,13 @@ struct ContentView: View {
             p1NotifyIds: userManager.p1FriendIds,
             p2NotifyIds: userManager.p2FriendIds,
             escalationPhone: autoCallNumber,
-            escalationDelayMinutes: autoCallDelayMinutes,
-            disguiseNotifications: disguiseAlerts
+            // The server uses this only for the agent's spoken "hasn't checked in for
+            // N minutes" line — round the true (seconds-granular) delay up to ≥1 min.
+            escalationDelayMinutes: max(1, Int((Double(autoCallDelayTotalSeconds) / 60).rounded())),
+            disguiseNotifications: disguiseAlerts,
+            victimDescription: userManager.myProfile.callSummary,
+            medicalNotes: userManager.myProfile.medicalNotes,
+            incidentTime: Date().formatted(date: .omitted, time: .shortened)
         )
         locationManager.requestPermission()
         locationManager.startUpdating()
@@ -266,7 +286,7 @@ struct ContentView: View {
             guard let id = sessionManager.createdSessionId else { return }
             sessionManager.requestEscalation(sessionId: id)
         }
-        escalation.start(delayMinutes: autoCallDelayMinutes)
+        escalation.start(delaySeconds: autoCallDelayTotalSeconds)
 
         // Heavy Agora join runs off the main thread so it never blocks the UI.
         DispatchQueue.global(qos: .userInitiated).async {
