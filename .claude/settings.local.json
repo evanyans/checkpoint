@@ -31,7 +31,14 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(firebase functions:secrets:access ELEVENLABS_AGENT_ID)",
-      "Bash(firebase login:list)"
+      "Bash(firebase login:list)",
+      "Bash(xcodebuild -list -project checkpoint.xcodeproj)",
+      "Bash(xcodebuild -project checkpoint.xcodeproj -scheme checkpoint -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -configuration Debug build)",
+      "Bash(sips -g pixelWidth -g pixelHeight -g hasAlpha /Users/evanyan/Downloads/logo.jpeg)",
+      "Bash(cp /Users/evanyan/Downloads/logo.jpeg /tmp/ck_logo_src.jpeg)",
+      "Bash(sips --padToHeightWidth 1796 1796 --padColor FFFFFF /tmp/ck_logo_src.jpeg --out /tmp/ck_logo_sq.png)",
+      "Bash(sips -z 1024 1024 /tmp/ck_logo_sq.png --out AppIcon.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight -g hasAlpha AppIcon.png)"
     ]
   }
 }

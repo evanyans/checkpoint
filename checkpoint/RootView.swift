@@ -29,9 +29,12 @@ struct RootView: View {
                 .tag(2)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .background(CK.background.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) {
             TabBar(selection: $selection, logHasUnread: logHasUnread)
         }
+        .preferredColorScheme(.dark)
+        .tint(CK.goldText)
         .onAppear {
             userManager.start()
             logManager.start()
@@ -58,33 +61,33 @@ private struct TabBar: View {
             tabButton(2, icon: "gearshape.fill", label: "Settings")
         }
         .padding(6)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
-        .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+        .background(CK.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(CK.divider, lineWidth: 1))
         .padding(.bottom, 6)
     }
 
     private func tabButton(_ tag: Int, icon: String, label: String, showsDot: Bool = false) -> some View {
-        Button {
+        let selected = selection == tag
+        return Button {
             withAnimation(.snappy) { selection = tag }
         } label: {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(selection == tag ? Color.white : Color.accentColor.opacity(0.5))
+                .foregroundStyle(selected ? CK.goldText : CK.textTertiary)
                 .frame(width: 54, height: 44)
                 .background {
-                    if selection == tag {
+                    if selected {
                         Circle()
-                            .fill(Color.accentColor)
+                            .strokeBorder(CK.gold, lineWidth: 1.5)
                             .frame(width: 44, height: 44)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
                     if showsDot {
                         Circle()
-                            .fill(Color.red)
+                            .fill(CK.danger)
                             .frame(width: 10, height: 10)
-                            .overlay(Circle().strokeBorder(Color(.systemBackground), lineWidth: 1.5))
+                            .overlay(Circle().strokeBorder(CK.surface, lineWidth: 1.5))
                             .offset(x: -8, y: 4)
                     }
                 }

@@ -28,9 +28,11 @@ func openGoogleMaps(to coordinate: CLLocationCoordinate2D) {
 }
 
 extension View {
-    /// Presents an action sheet to choose which maps app to open directions in.
+    /// Presents a centered alert to choose which maps app to open directions in.
+    /// (An `alert` always centers on screen, unlike `confirmationDialog`, which
+    /// anchors as a popover on iPad/regular-width and can appear in the wrong spot.)
     func directionsChooser(isPresented: Binding<Bool>, coordinate: CLLocationCoordinate2D?) -> some View {
-        confirmationDialog("Get Directions", isPresented: isPresented, titleVisibility: .visible) {
+        alert("Get Directions", isPresented: isPresented) {
             Button("Apple Maps") {
                 if let coordinate { openAppleMaps(to: coordinate) }
             }
@@ -38,6 +40,8 @@ extension View {
                 if let coordinate { openGoogleMaps(to: coordinate) }
             }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Open directions to the emergency location.")
         }
     }
 }

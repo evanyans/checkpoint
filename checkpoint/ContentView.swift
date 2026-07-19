@@ -133,6 +133,7 @@ struct ContentView: View {
                         stream: stream,
                         sessionManager: sessionManager,
                         escalation: escalation,
+                        userManager: userManager,
                         // Viewer's ✕ must run the viewer cleanup (removeViewer, stop
                         // listeners) — not the broadcaster's endSession — otherwise the
                         // viewer's id lingers in viewerIds and the count never drops.
@@ -148,42 +149,32 @@ struct ContentView: View {
 
     private var homeScreen: some View {
         VStack(spacing: 24) {
-            Spacer()
-
             VStack(spacing: 8) {
                 Text("Checkpoint")
-                    .font(.largeTitle.bold())
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(CK.textPrimary)
                 Text("Start livestream and alert your friends.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 15))
+                    .foregroundStyle(CK.textSecondary)
                     .multilineTextAlignment(.center)
             }
+            .padding(.top, 24)
 
             Spacer()
 
-            VStack(spacing: 12) {
-                TimelineView(.animation(paused: holdStartedAt == nil)) { context in
-                    let progress = holdProgress(at: context.date)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color(.systemGray5))
-                            Capsule()
-                                .fill(Color(.systemGray))
-                                .frame(width: geo.size.width * progress)
-                        }
-                    }
-                }
-                .frame(height: 8)
+            VStack(spacing: 18) {
+                holdTarget
 
-                Text("Hold screen for 3 seconds")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text("Hold anywhere for three seconds")
+                    .font(.system(size: 14))
+                    .foregroundStyle(CK.textTertiary)
             }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 60)
+
+            Spacer()
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ckScreenBackground()
         .contentShape(Rectangle())
         .gesture(
             DragGesture(minimumDistance: 0)
@@ -197,6 +188,35 @@ struct ContentView: View {
                     cancelHold()
                 }
         )
+    }
+
+    /// The circular hold target: a gold ring that fills as the countdown runs,
+    /// with a shield inside a 1.5px gold circle. Progress is driven from the same
+    /// wall-clock `holdProgress(at:)` value the trigger uses.
+    private var holdTarget: some View {
+        TimelineView(.animation(paused: holdStartedAt == nil)) { context in
+            let progress = holdProgress(at: context.date)
+            ZStack {
+                Circle()
+                    .stroke(CK.divider, lineWidth: 1.5)
+                    .frame(width: 172, height: 172)
+
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(CK.gold, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 172, height: 172)
+
+                Circle()
+                    .strokeBorder(CK.gold, lineWidth: 1.5)
+                    .frame(width: 148, height: 148)
+
+                Image(systemName: "shield")
+                    .font(.system(size: 46, weight: .light))
+                    .foregroundStyle(CK.goldText)
+            }
+            .frame(width: 190, height: 190)
+        }
     }
 
     // MARK: - Hold gesture

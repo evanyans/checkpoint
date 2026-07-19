@@ -20,12 +20,14 @@ struct EmergencyView: View {
     @ObservedObject var stream: AgoraStreamManager
     @ObservedObject var sessionManager: SessionManager
     @ObservedObject var escalation: EscalationController
+    @ObservedObject var userManager: UserManager
     let onEnd: () -> Void
 
     @State private var showEtaSheet = false
     @State private var etaMinutes: Double = 10
     @State private var showMapOptions = false
     @State private var discreetActive = false
+    @State private var showVictimInfo = false
 
     @AppStorage("disguiseAlerts") private var disguiseAlerts = true
 
@@ -41,6 +43,12 @@ struct EmergencyView: View {
                 respond(.coming, eta: eta)
             }
         }
+        .sheet(isPresented: $showVictimInfo) {
+            VictimInfoSheet(
+                userManager: userManager,
+                ownerId: sessionManager.activeSession?.ownerId
+            )
+        }
         .onChange(of: discreetActive) { _, hidden in
             // A hidden screen means someone may be looking, so force-disguise
             // incoming responder pushes; revert to the user's setting when revealed.
@@ -55,28 +63,23 @@ struct EmergencyView: View {
 
     private var broadcasterContent: some View {
         ZStack {
-            VStack(spacing: 16) {
+            CK.background.ignoresSafeArea()
+
+            VStack(spacing: 11) {
                 Text(stream.statusText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(CK.textSecondary)
 
                 escalationBanner
 
                 videoArea
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black)
-                    .cornerRadius(12)
+                    .background(CK.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(alignment: .topTrailing) { viewerCountBadge }
 
                 if let response = currentResponse {
-                    Label(bannerText(for: response), systemImage: response.iconName)
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.green)
-                        .cornerRadius(12)
+                    responseStatePill(bannerText(for: response))
                 }
 
                 NotificationLogView(entries: sessionManager.notifications)
@@ -86,20 +89,18 @@ struct EmergencyView: View {
                 Button {
                     discreetActive = true
                 } label: {
-                    Text("Hide Screen").primaryActionLabel()
+                    Text("Hide Screen")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color(.systemGray))
+                .buttonStyle(.ghost)
 
-                Button(role: .destructive) {
+                Button {
                     onEnd()
                 } label: {
-                    Text("End Emergency").primaryActionLabel()
+                    Text("End Emergency")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.dangerFilled)
             }
             .padding()
-            .squarishButtons()
 
             if discreetActive {
                 FakeScreenView { discreetActive = false }
@@ -118,24 +119,49 @@ struct EmergencyView: View {
     @ViewBuilder
     private var escalationBanner: some View {
         if escalation.didEscalate {
-            escalationPill("Emergency call placed", icon: "phone.fill", color: .red)
+            // A placed emergency call is a true danger state — keep it solid red.
+            escalationPill("Emergency call placed", icon: "phone.fill",
+                           color: .white, fill: CK.danger)
         } else if escalation.isSuppressed {
             escalationPill("Auto-call paused — a friend is watching",
-                           icon: "eye.fill", color: .green)
+                           icon: "eye.fill", color: CK.textSecondary)
         } else if escalation.isArmed {
             escalationPill("Auto-call in \(timeString(escalation.secondsRemaining))",
-                           icon: "phone.arrow.up.right.fill", color: .orange)
+                           icon: "phone.arrow.up.right.fill", color: CK.goldText)
         }
     }
 
-    private func escalationPill(_ text: String, icon: String, color: Color) -> some View {
+    /// Escalation banner. Defaults to an outlined gold pill; pass a `fill` to render
+    /// a solid danger state instead.
+    private func escalationPill(_ text: String, icon: String, color: Color, fill: Color? = nil) -> some View {
         Label(text, systemImage: icon)
-            .font(.subheadline.bold())
-            .foregroundStyle(.white)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(color)
             .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.vertical, 9)
             .frame(maxWidth: .infinity)
-            .background(color, in: Capsule())
+            .background {
+                if let fill {
+                    RoundedRectangle(cornerRadius: 10).fill(fill)
+                } else {
+                    RoundedRectangle(cornerRadius: 10).strokeBorder(CK.gold, lineWidth: 1)
+                }
+            }
+    }
+
+    /// The friend-response state ("Friend coming · ETA 10 min") as an outlined pill.
+    private func responseStatePill(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(CK.goldText)
+            Text(text)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(CK.textPrimary)
+        }
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: 10).strokeBorder(CK.divider, lineWidth: 1))
     }
 
     private func timeString(_ seconds: Int) -> String {
@@ -145,23 +171,23 @@ struct EmergencyView: View {
     /// Explains the covert vibration code so the victim can decode buzzes even with
     /// the screen hidden — the pulse count matches HapticManager.play().
     private var buzzLegend: some View {
-        Label("Phone buzzes — 1: watching · 2: coming · 3: 911 called",
-              systemImage: "iphone.radiowaves.left.and.right")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        Text("Phone buzzes — 1: watching · 2: coming · 3: 911 called")
+            .font(.system(size: 11))
+            .foregroundStyle(CK.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var viewerCount: Int { sessionManager.activeSession?.viewerIds.count ?? 0 }
 
     private var viewerCountBadge: some View {
-        Label("\(viewerCount) watching", systemImage: "eye.fill")
-            .font(.caption.bold())
-            .foregroundStyle(.white)
+        Text("\(viewerCount) watching")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(CK.textPrimary)
             .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(.ultraThinMaterial, in: Capsule())
-            .padding(8)
+            .padding(.vertical, 4)
+            .background(CK.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(CK.divider, lineWidth: 1))
+            .padding(12)
     }
 
     // MARK: - Viewer
@@ -170,21 +196,28 @@ struct EmergencyView: View {
         VStack(spacing: 10) {
             videoArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black)
-                .cornerRadius(12)
+                .background(CK.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(alignment: .topLeading) { leaveButton }
                 .overlay(alignment: .topTrailing) { viewerCountBadge }
+                .overlay(alignment: .bottomLeading) { infoButton }
                 .overlay(alignment: .bottomTrailing) { captureButton }
 
             if let coordinate = sessionManager.activeSession?.coordinate {
                 LocationMapView(coordinate: coordinate)
                     .frame(height: 110)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(CK.divider, lineWidth: 1))
                     .overlay(alignment: .bottomTrailing) {
                         Text("Tap for directions")
-                            .font(.caption2)
-                            .padding(6)
-                            .background(.ultraThinMaterial, in: Capsule())
+                            .font(.system(size: 10))
+                            .foregroundStyle(CK.textPrimary)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(CK.surface, in: Capsule())
+                            .overlay(Capsule().strokeBorder(CK.divider, lineWidth: 1))
                             .padding(6)
                     }
                     .overlay(
@@ -201,37 +234,46 @@ struct EmergencyView: View {
                             Image(uiImage: capture.image)
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 52, height: 52)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .frame(width: 48, height: 48)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(CK.divider, lineWidth: 1))
                         }
                     }
                 }
-                .frame(height: 52)
+                .frame(height: 48)
             }
 
             if let analysis = sessionManager.activeSession?.analysis, analysis.present, !analysis.summary.isEmpty {
                 HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: "sparkles").font(.caption)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13))
+                        .foregroundStyle(CK.goldText)
                     Text(analysis.summary)
-                        .font(.caption)
+                        .font(.system(size: 12))
+                        .foregroundStyle(CK.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
-                .padding(8)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+                .ckOutlinedCard(cornerRadius: 10, padding: 10)
             }
 
             if !sessionManager.notifications.isEmpty {
                 NotificationLogView(entries: sessionManager.notifications, maxHeight: 84)
             }
 
+            Spacer(minLength: 0)
+
             HStack(spacing: 8) {
-                responseButton("Coming", tint: .accentColor, prominent: true) { showEtaSheet = true }
-                responseButton("911", tint: .orange, prominent: true) { respond(.called911) }
-                responseButton("Watching", tint: .accentColor, prominent: false) { respond(.watching) }
+                Button { showEtaSheet = true } label: { Text("Coming") }
+                    .buttonStyle(.goldFilled)
+                Button { respond(.called911) } label: { Text("911") }
+                    .buttonStyle(.dangerFilled)
+                Button { respond(.watching) } label: { Text("Watching") }
+                    .buttonStyle(.neutralFilled)
             }
         }
         .padding()
+        .background(CK.background.ignoresSafeArea())
     }
 
     private var leaveButton: some View {
@@ -239,12 +281,29 @@ struct EmergencyView: View {
             onEnd()
         } label: {
             Image(systemName: "xmark")
-                .font(.headline)
-                .foregroundStyle(.white)
-                .padding(10)
-                .background(.ultraThinMaterial, in: Circle())
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(CK.textPrimary)
+                .frame(width: 32, height: 32)
+                .background(CK.surface, in: Circle())
+                .overlay(Circle().strokeBorder(CK.divider, lineWidth: 1))
         }
-        .padding(8)
+        .padding(12)
+    }
+
+    /// Opens the victim's profile details so a viewer can describe them to police.
+    private var infoButton: some View {
+        Button {
+            showVictimInfo = true
+        } label: {
+            Image(systemName: "info")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(CK.textPrimary)
+                .frame(width: 42, height: 42)
+                .background(CK.surface, in: Circle())
+                .overlay(Circle().strokeBorder(CK.divider, lineWidth: 1))
+        }
+        .padding(12)
+        .accessibilityLabel("Victim details")
     }
 
     private var captureButton: some View {
@@ -252,25 +311,14 @@ struct EmergencyView: View {
             stream.takeSnapshot()
         } label: {
             Image(systemName: "camera.fill")
-                .font(.title2)
-                .foregroundStyle(.white)
-                .padding(14)
-                .background(.ultraThinMaterial, in: Circle())
+                .font(.system(size: 17))
+                .foregroundStyle(CK.textPrimary)
+                .frame(width: 42, height: 42)
+                .background(CK.surface, in: Circle())
+                .overlay(Circle().strokeBorder(CK.divider, lineWidth: 1))
         }
         .disabled(stream.remoteUid == nil)
         .padding(12)
-    }
-
-    private func responseButton(_ title: String, tint: Color, prominent: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.bold())
-                .frame(maxWidth: .infinity, minHeight: 48)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(prominent ? tint : Color(.systemGray4))
-        .foregroundStyle(prominent ? Color.white : Color.primary)
-        .buttonBorderShape(.capsule)
     }
 
     // MARK: - Helpers
@@ -344,10 +392,8 @@ struct EtaSheet: View {
                     dismiss()
                 } label: {
                     Text("Confirm & Send")
-                        .primaryActionLabel()
                 }
-                .buttonStyle(.borderedProminent)
-                .squarishButtons()
+                .buttonStyle(.goldFilled)
             }
             .padding()
             .navigationTitle("On My Way")
@@ -359,6 +405,140 @@ struct EtaSheet: View {
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+/// The victim's profile details, opened by a viewer from the livestream so they can
+/// describe the person (age, height, appearance, accessories) and relay medical notes
+/// to a 911 operator. Read-only; pulled live from the session owner's profile.
+struct VictimInfoSheet: View {
+    @ObservedObject var userManager: UserManager
+    let ownerId: String?
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var profile = UserProfile()
+    @State private var photo: UIImage?
+    @State private var loaded = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+
+                    section("Description") {
+                        infoRow("Age", profile.age)
+                        infoRow("Height", profile.height)
+                        infoRow("Race", profile.race)
+                        infoRow("Appearance", profile.physicalDescription)
+                        infoRow("Accessories", profile.accessories, divider: false)
+                    }
+
+                    section("Medical") {
+                        infoRow("Notes", profile.medicalNotes, divider: false)
+                    }
+
+                    section("Emergency contact") {
+                        infoRow("Name", profile.emergencyContactName)
+                        phoneRow
+                    }
+
+                    if loaded, profile == UserProfile() {
+                        Text("This friend hasn't filled out their profile yet.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(CK.textTertiary)
+                            .padding(.top, 20)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+            }
+            .background(CK.background.ignoresSafeArea())
+            .navigationTitle("Victim details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .tint(CK.goldText)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .onAppear {
+            guard let ownerId else { return }
+            userManager.fetchProfile(userId: ownerId) { name, profile in
+                self.name = name
+                self.profile = profile
+                self.loaded = true
+            }
+            userManager.loadPhoto(userId: ownerId) { photo = $0 }
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 10) {
+            AvatarView(image: photo, name: name.isEmpty ? "Friend" : name, size: 72)
+            Text(name.isEmpty ? "Friend" : name)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(CK.textPrimary)
+            Text("Read these details to the 911 operator.")
+                .font(.system(size: 13))
+                .foregroundStyle(CK.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        CKKicker(title).padding(.top, 20).padding(.bottom, 4)
+        content()
+    }
+
+    private func infoRow(_ label: String, _ value: String, divider: Bool = true) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top) {
+                Text(label)
+                    .font(.system(size: 15))
+                    .foregroundStyle(CK.textSecondary)
+                Spacer(minLength: 16)
+                Text(value.isEmpty ? "Not provided" : value)
+                    .font(.system(size: 15))
+                    .foregroundStyle(value.isEmpty ? CK.textTertiary : CK.textPrimary)
+                    .multilineTextAlignment(.trailing)
+            }
+            .padding(.vertical, 11)
+            if divider { CKHairline() }
+        }
+    }
+
+    @ViewBuilder
+    private var phoneRow: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Phone")
+                    .font(.system(size: 15))
+                    .foregroundStyle(CK.textSecondary)
+                Spacer(minLength: 16)
+                if profile.emergencyContactPhone.isEmpty {
+                    Text("Not provided")
+                        .font(.system(size: 15))
+                        .foregroundStyle(CK.textTertiary)
+                } else {
+                    Link(profile.emergencyContactPhone, destination: telURL(profile.emergencyContactPhone))
+                        .font(.system(size: 15, weight: .semibold))
+                        .tint(CK.goldText)
+                }
+            }
+            .padding(.vertical, 11)
+        }
+    }
+
+    private func telURL(_ phone: String) -> URL {
+        let digits = phone.filter { $0.isNumber || $0 == "+" }
+        return URL(string: "tel://\(digits)") ?? URL(string: "tel://")!
     }
 }
 
@@ -400,11 +580,9 @@ struct SafetyCheckOverlay: View {
                 .animation(.linear(duration: 0.06), value: progress)
 
                 Button(action: onSafe) {
-                    Text("I'm safe").primaryActionLabel()
+                    Text("I'm safe")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .buttonBorderShape(.capsule)
+                .buttonStyle(.goldFilled)
             }
             .padding()
         }

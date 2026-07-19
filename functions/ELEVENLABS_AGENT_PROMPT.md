@@ -16,7 +16,7 @@ Where each comes from:
 
 | Variable | Source |
 |---|---|
-| `user_name` | The victim's display name (`triggeredBy`) |
+| `user_name` | The victim's display name (`triggeredfirebase deploy --only functions:placeEscalationCallBy`) |
 | `minutes` | Escalation delay, rounded up to ≥1 min (for the "hasn't checked in" line) |
 | `time` | Local time the alert was triggered |
 | `location` | Last known GPS (lat/long) |

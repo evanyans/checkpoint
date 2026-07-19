@@ -44,10 +44,10 @@ struct NotificationLogEntry: Identifiable {
 
     var tint: Color {
         switch response {
-        case .called911: return .orange
-        case .coming: return .accentColor
-        case .watching: return Color(.systemGray)
-        case .none: return Color(.systemGray)
+        case .called911: return CK.danger
+        case .coming: return CK.goldText
+        case .watching: return CK.textSecondary
+        case .none: return CK.textSecondary
         }
     }
 }
@@ -62,13 +62,13 @@ struct NotificationLogView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Responder activity", systemImage: "bell.badge.fill")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(CK.textSecondary)
 
             if entries.isEmpty {
                 Text("No one has responded yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(CK.textSecondary)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
@@ -79,8 +79,7 @@ struct NotificationLogView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .ckOutlinedCard(cornerRadius: 10, padding: 12)
     }
 }
 
@@ -95,15 +94,15 @@ private struct NotificationLogRow: View {
                 .frame(width: 18)
 
             Text(entry.summary)
-                .font(.caption)
-                .foregroundStyle(.primary)
+                .font(.system(size: 12))
+                .foregroundStyle(CK.textPrimary)
 
             Spacer(minLength: 4)
 
             if let date = entry.createdAt {
                 Text(date, format: .dateTime.hour().minute())
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(CK.textSecondary)
             }
         }
     }

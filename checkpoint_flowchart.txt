@@ -1,0 +1,59 @@
+flowchart TD
+    subgraph victim["📱 Victim's phone"]
+        T["Trigger emergency<br/>(hold 3s or Back Tap)"]
+        B["Broadcast camera<br/>via Agora"]
+        LOC["Share live GPS<br/>(Core Location)"]
+        VIS["Vision auto-captures<br/>photos of people in frame"]
+        BUZZ["Coded haptic buzz<br/>1=watching 2=coming 3=911"]
+        SAFE{"'Are you safe?'<br/>prompt"}
+    end
+
+    subgraph fb["☁️ Firebase"]
+        FS[("Cloud Firestore<br/>live session data")]
+        CF["Cloud Functions"]
+        FCM["Cloud Messaging<br/>(FCM → APNs)"]
+    end
+
+    subgraph friend["📱 Friends' phones"]
+        ALERT["Push: '[name] triggered<br/>an emergency'"]
+        VIEW["Watch stream via Agora<br/>+ live map + victim details"]
+        RESP["Respond:<br/>Coming / 911 / Watching"]
+    end
+
+    subgraph ext["🤖 External services"]
+        GEM["Google Gemini<br/>suspect description"]
+        EL["ElevenLabs<br/>AI voice agent"]
+        TW["Twilio<br/>outbound call"]
+        CONTACT["📞 Emergency contact"]
+    end
+
+    T --> FS
+    T --> B
+    T --> LOC
+    B --> VIS
+    LOC --> FS
+    VIS --> FS
+
+    FS -->|"session created"| CF
+    CF -->|"fan-out (P1, then P2 after 2 min)"| FCM
+    FCM --> ALERT
+    ALERT --> VIEW
+    VIEW --> RESP
+    RESP --> FS
+
+    FS -->|"friend responded"| CF
+    CF -->|"disguised if discreet mode"| FCM
+    FCM --> BUZZ
+
+    FS -->|"new photo"| CF
+    CF --> GEM
+    GEM -->|"description"| FS
+    FS --> VIEW
+
+    T -.->|"countdown, no viewer"| SAFE
+    SAFE -->|"no response"| CF
+    CF --> EL
+    EL --> TW
+    TW --> CONTACT
+    GEM -.->|"suspect info spoken on call"| EL
+    LOC -.->|"location + maps link"| EL

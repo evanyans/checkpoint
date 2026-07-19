@@ -12,37 +12,52 @@ struct IncomingAlertView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        ZStack {
-            Color.accentColor.ignoresSafeArea()
+        ZStack(alignment: .top) {
+            CK.background.ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.white)
-                Text("Emergency Alert")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(.white)
-                Text("A friend needs help right now.")
-                    .foregroundStyle(.white.opacity(0.9))
+            // 6px solid red top accent bar — the single life-safety signal.
+            CK.danger
+                .frame(height: 6)
+                .ignoresSafeArea(edges: .top)
 
-                Button {
-                    onView()
-                } label: {
-                    Text("View Stream")
-                        .primaryActionLabel()
+            VStack(spacing: 22) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(CK.danger, lineWidth: 1.5)
+                        .frame(width: 70, height: 70)
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 28, weight: .regular))
+                        .foregroundStyle(CK.danger)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.white)
-                .foregroundStyle(Color.accentColor)
-                .squarishButtons()
 
-                Button("Dismiss") {
-                    onDismiss()
+                VStack(spacing: 10) {
+                    Text("Emergency Alert")
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(CK.textPrimary)
+                    Text("A friend needs help right now.")
+                        .font(.system(size: 16))
+                        .foregroundStyle(CK.textPrimary)
                 }
-                .foregroundStyle(.white)
-                .padding(.top, 4)
+
+                VStack(spacing: 14) {
+                    Button {
+                        onView()
+                    } label: {
+                        Text("View Stream").fontWeight(.bold)
+                    }
+                    .buttonStyle(FilledPillButtonStyle(fill: CK.danger, textColor: .white))
+
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Text("Dismiss")
+                            .font(.system(size: 15))
+                            .foregroundStyle(CK.textSecondary)
+                    }
+                }
+                .padding(.top, 6)
             }
-            .padding()
+            .padding(.horizontal, 32)
         }
     }
 }
